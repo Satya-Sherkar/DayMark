@@ -12,9 +12,12 @@ import { categoryService } from "./services/categoryService";
 import { CreateTaskInput, DashboardSummary, Task, UpdateTaskInput } from "./types/task";
 import { CreateProjectInput, Project, UpdateProjectInput } from "./types/project";
 import { Category, CreateCategoryInput, UpdateCategoryInput } from "./types/category";
+import { useZoom } from "./hooks/useZoom";
+import { ZoomIndicator } from "./components/ui/ZoomIndicator";
 import "./App.css";
 
 export function App() {
+  const { percentage, showIndicator } = useZoom();
   const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
   const [isDark, setIsDark] = useState<boolean>(() => {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -373,6 +376,9 @@ export function App() {
         onSubmit={handleCategorySubmit}
         initialCategory={editingCategory}
       />
+
+      {/* Zoom Feedback Indicator */}
+      <ZoomIndicator percentage={percentage} visible={showIndicator} />
     </div>
   );
 }

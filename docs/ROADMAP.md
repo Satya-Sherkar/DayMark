@@ -57,11 +57,17 @@ This roadmap outlines the planned development phases for Daymark.
 
 ---
 
-### [ ] Phase 5 — System Tray, Global Shortcut, Autostart
-- System tray with Open, Quick Add, Separator, and Quit.
-- Window close interception (hiding window instead of exiting).
-- Global keyboard shortcut (`Ctrl+Shift+Space`) opening quick-add.
-- Opt-in Linux autostart toggle in settings.
+### [x] Phase 5 — System Tray, Global Shortcut, Autostart
+- System tray with native menu (Open Daymark, Quick Add Task, Separator, Quit Daymark) and left-click visibility toggle.
+- Window close interception (`WindowEvent::CloseRequested` prevents close and hides window to tray).
+- Global keyboard shortcut (`Ctrl+Shift+Space`) to instantly show/focus Daymark and open the Quick Add Task dialog.
+- Opt-in Linux XDG autostart integration with system autolaunch and SQLite `settings` table persistence.
+- Memory & Resource consumption optimizations:
+  - SQLite in-memory cache capped to 2MB via `PRAGMA cache_size = -2000`, `mmap_size = 0`, and `synchronous = NORMAL`.
+  - Periodic passive WAL checkpointing in the scheduler thread to reclaim dirty memory pages and truncate WAL files.
+  - Frontend hibernation: Webview visibility listener pauses non-essential operations when the window is hidden.
+  - `SettingsModal` providing real-time autostart toggle, shortcut reference, and memory footprint metrics.
+- Unit test suite verifying settings persistence and conflict upsert idempotency (14 tests passing).
 
 ---
 

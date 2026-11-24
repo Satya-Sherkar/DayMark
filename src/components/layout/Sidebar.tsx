@@ -15,6 +15,7 @@ import {
   Trash2,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
 } from "lucide-react";
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
@@ -40,6 +41,7 @@ interface SidebarProps {
   onDeleteCategory?: (id: string) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -61,6 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteCategory,
   isCollapsed = false,
   onToggleCollapse,
+  onOpenSettings,
 }) => {
   const navItems = [
     { id: "dashboard" as NavTab, label: "Dashboard", icon: LayoutDashboard },
@@ -330,6 +333,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <ShieldCheck className="w-3.5 h-3.5 text-dm-accent shrink-0" />
             <span className="truncate">Offline • SQLite</span>
           </div>
+        )}
+
+        {/* Settings Button */}
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            title="Open Settings"
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[6px] text-xs font-sans text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-surface border border-transparent hover:border-dm-border transition-colors cursor-pointer ${
+              isCollapsed ? "justify-center px-0" : ""
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Settings className="w-3.5 h-3.5 text-dm-accent" />
+              {!isCollapsed && <span>Settings</span>}
+            </span>
+            {!isCollapsed && (
+              <span className="font-mono text-[9px] uppercase tracking-wider text-dm-text-secondary">
+                System
+              </span>
+            )}
+          </button>
         )}
 
         {/* Theme Toggle */}

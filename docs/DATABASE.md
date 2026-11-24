@@ -5,10 +5,14 @@
 - **Database Path:** Resolves dynamically at runtime via Tauri's app data directory:
   `~/.local/share/com.daymark.app/daymark.db`
 - **Engine:** SQLite embedded via `rusqlite` (compiled with the `bundled` feature).
-- **PRAGMAs:**
+- **PRAGMAs & Memory Optimization:**
   - `PRAGMA foreign_keys = ON;` — enforce referential integrity.
   - `PRAGMA journal_mode = WAL;` — Write-Ahead Logging for high concurrent read performance.
   - `PRAGMA busy_timeout = 5000;` — 5-second busy timeout to handle lock contention gracefully.
+  - `PRAGMA cache_size = -2000;` — limits SQLite page cache to at most ~2 MB in RAM.
+  - `PRAGMA mmap_size = 0;` — disables unbounded address space mapping on Linux.
+  - `PRAGMA synchronous = NORMAL;` — safe, high performance synchronization with WAL.
+  - `PRAGMA wal_checkpoint(PASSIVE);` — periodically invoked every 15 minutes by the scheduler to truncate WAL and return dirty pages to the OS.
 
 ---
 

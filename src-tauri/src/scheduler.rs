@@ -9,8 +9,17 @@ use crate::db::repository;
 
 pub fn start_reminder_scheduler(app_handle: AppHandle, db: Arc<Mutex<Connection>>) {
     thread::spawn(move || {
+        let mut tick_counter: u64 = 0;
         loop {
+            tick_counter = tick_counter.wrapping_add(1);
             let now = Utc::now().to_rfc3339();
+
+            // Periodic WAL checkpoint every 60 ticks (~15 minutes) to reclaim dirty memory pages
+            if tick_counter % 60 == 0 {
+                if let Ok(conn) = db.lock() {
+                    let _ = conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);");
+                }
+            }
 
             // 1. Fetch due undelivered reminders (includes missed reminders from downtime)
             let due_reminders = {

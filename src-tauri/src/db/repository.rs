@@ -1419,4 +1419,35 @@ mod tests {
         let reminders_after_del = list_reminders_for_task(&conn, &task.id).expect("list reminders");
         assert_eq!(reminders_after_del.len(), 0);
     }
+
+    #[test]
+    fn test_settings_table_crud_and_conflict_upsert() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        // Insert initial setting
+        conn.execute(
+            "INSERT INTO settings (key, value, updated_at) VALUES ('autostart_enabled', 'false', '2026-11-24T10:00:00Z')",
+            [],
+        )
+        .expect("insert setting");
+
+        let val: String = conn
+            .query_row("SELECT value FROM settings WHERE key = 'autostart_enabled'", [], |r| r.get(0))
+            .expect("query setting");
+        assert_eq!(val, "false");
+
+        // Upsert setting on conflict
+        conn.execute(
+            "INSERT INTO settings (key, value, updated_at)
+             VALUES ('autostart_enabled', 'true', '2026-11-24T10:05:00Z')
+             ON CONFLICT(key) DO UPDATE SET value = 'true', updated_at = '2026-11-24T10:05:00Z'",
+            [],
+        )
+        .expect("upsert setting");
+
+        let updated_val: String = conn
+            .query_row("SELECT value FROM settings WHERE key = 'autostart_enabled'", [], |r| r.get(0))
+            .expect("query updated setting");
+        assert_eq!(updated_val, "true");
+    }
 }

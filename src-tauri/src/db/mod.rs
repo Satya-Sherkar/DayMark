@@ -13,11 +13,14 @@ pub fn init_db(db_path: &Path) -> Result<Connection, String> {
     let mut conn = Connection::open(db_path)
         .map_err(|e| format!("Failed to open database at {}: {}", db_path.display(), e))?;
 
-    // Apply SQLite PRAGMAs as per specification
+    // Apply SQLite PRAGMAs as per specification, capped for minimal memory consumption
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
          PRAGMA journal_mode = WAL;
-         PRAGMA busy_timeout = 5000;"
+         PRAGMA busy_timeout = 5000;
+         PRAGMA cache_size = -2000;
+         PRAGMA mmap_size = 0;
+         PRAGMA synchronous = NORMAL;"
     )
     .map_err(|e| format!("Failed to set database PRAGMAs: {}", e))?;
 

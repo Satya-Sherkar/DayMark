@@ -7,6 +7,8 @@
     "core:default",
     "opener:default",
     "core:webview:allow-set-webview-zoom",
-    "notification:default"
+    "notification:default",
+    "autostart:default",
+    "global-shortcut:default"
   ]
 }

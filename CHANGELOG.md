@@ -47,6 +47,18 @@ All notable changes to Daymark are documented in this file.
   - Enhanced `TaskModal` with reminder presets (at due time, 15m, 30m, 1h, 1d before, and custom datetime) and active reminders management.
   - Created in-app floating reminder alert banner in `App.tsx` with one-click task completion and dismissal.
   - Added unit test `test_reminder_lifecycle_and_duplicate_protection` verifying scheduling, due querying, atomic delivery, and cascade deletion.
+- **Phase 5 System Tray, Global Shortcut, Autostart & Memory Optimization:**
+  - Built native system tray (`src-tauri/src/tray.rs`) featuring Open, Quick Add, Separator, and Quit actions.
+  - Added left-click toggle on the system tray icon to hide/show and focus the main window.
+  - Implemented window close interception (`WindowEvent::CloseRequested`) to keep Daymark running quietly in the background tray.
+  - Integrated `tauri-plugin-global-shortcut` registering `Ctrl+Shift+Space` to trigger Quick Add Task from any active window or application.
+  - Added typed settings commands (`is_autostart_enabled`, `set_autostart_enabled`, `get_setting`, `set_setting`) interacting with `tauri-plugin-autostart` and SQLite `settings` table.
+  - Optimized memory consumption across Rust and SQLite:
+    - Set `PRAGMA cache_size = -2000` (capped to 2MB in-memory cache), `PRAGMA mmap_size = 0`, and `synchronous = NORMAL`.
+    - Added periodic passive WAL checkpointing in the scheduler thread every 15 minutes to reclaim dirty memory pages and truncate WAL files.
+    - Added frontend visibility listener in `App.tsx` pausing active reloads and rendering while the window is hidden to minimize background CPU and RAM usage.
+  - Added `SettingsModal` in the frontend accessible from the sidebar to manage Linux autostart, view hotkeys, and inspect memory metrics.
+  - Added unit test `test_settings_table_crud_and_conflict_upsert` (total 14 unit tests passing).
 - **Visual Design System (Swiss Editorial + Obsidian Workshop):**
   - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
   - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.

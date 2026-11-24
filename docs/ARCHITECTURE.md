@@ -72,11 +72,21 @@
 | `delete_reminder` | `id: String` | `()` | Deletes a scheduled reminder |
 | `dismiss_reminder` | `id: String` | `()` | Marks reminder as dismissed |
 
+### Settings & Autostart Management
+
+| Command | Arguments | Return Type | Description |
+|---|---|---|---|
+| `is_autostart_enabled` | None | `bool` | Queries system autolaunch status on Ubuntu/Linux |
+| `set_autostart_enabled` | `enabled: bool` | `()` | Configures system autolaunch and syncs with SQLite |
+| `get_setting` | `key: String` | `Option<String>` | Retrieves persisted key-value setting |
+| `set_setting` | `key: String, value: String` | `()` | Upserts setting key-value pair |
+
 ### Events (Backend → Frontend)
 
 | Event Name | Payload | Trigger |
 |---|---|---|
 | `reminder-delivered` | `DueReminder` | Emitted when background scheduler delivers a notification |
+| `open-quick-add` | `()` | Emitted when global hotkey (`Ctrl+Shift+Space`) or tray menu Quick Add is triggered |
 
 ---
 

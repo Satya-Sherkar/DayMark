@@ -7,6 +7,7 @@ import { CalendarPage } from "./pages/CalendarPage";
 import { TaskModal } from "./components/tasks/TaskModal";
 import { ProjectModal } from "./components/projects/ProjectModal";
 import { CategoryModal } from "./components/categories/CategoryModal";
+import { SettingsModal } from "./components/settings/SettingsModal";
 import { taskService } from "./services/taskService";
 import { projectService } from "./services/projectService";
 import { categoryService } from "./services/categoryService";
@@ -17,6 +18,7 @@ import { Category, CreateCategoryInput, UpdateCategoryInput } from "./types/cate
 import { DueReminder } from "./types/reminder";
 import { useZoom } from "./hooks/useZoom";
 import { ZoomIndicator } from "./components/ui/ZoomIndicator";
+import { listen } from "@tauri-apps/api/event";
 import { Bell, X, CheckCircle2 } from "lucide-react";
 import "./App.css";
 
@@ -56,6 +58,9 @@ export function App() {
   // Modal State for Categories
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // Modal State for Settings
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
 
   // Sidebar Collapse State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -137,6 +142,33 @@ export function App() {
     return () => {
       if (unlisten) unlisten();
     };
+  }, [loadData]);
+
+  // Listen for global shortcut or tray "Quick Add" trigger
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen("open-quick-add", () => {
+      setEditingTask(null);
+      setModalDueAt(null);
+      setIsModalOpen(true);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Memory & CPU conservation: Refresh data only when window becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [loadData]);
 
   // Task actions
@@ -321,6 +353,7 @@ export function App() {
         onDeleteCategory={handleDeleteCategory}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -455,6 +488,14 @@ export function App() {
         }}
         onSubmit={handleCategorySubmit}
         initialCategory={editingCategory}
+      />
+
+      {/* Settings & System Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark((prev) => !prev)}
       />
 
       {/* In-App Reminder Alert Banner */}

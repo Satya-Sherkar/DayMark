@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { CreateTaskInput, Task, TaskPriority, UpdateTaskInput } from "../../types/task";
+import { Project } from "../../types/project";
+import { Category } from "../../types/category";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (input: CreateTaskInput | UpdateTaskInput) => Promise<void>;
   initialTask?: Task | null;
+  projects?: Project[];
+  categories?: Category[];
 }
 
 export const TaskModal: React.FC<TaskModalProps> = ({
@@ -14,11 +18,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onClose,
   onSubmit,
   initialTask,
+  projects = [],
+  categories = [],
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueAt, setDueAt] = useState("");
+  const [projectId, setProjectId] = useState<string>("");
+  const [categoryId, setCategoryId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,6 +35,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle(initialTask.title);
       setDescription(initialTask.description || "");
       setPriority(initialTask.priority);
+      setProjectId(initialTask.projectId || "");
+      setCategoryId(initialTask.categoryId || "");
       // Format RFC3339 for datetime-local input YYYY-MM-DDTHH:MM
       if (initialTask.dueAt) {
         try {
@@ -46,6 +56,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setDescription("");
       setPriority("medium");
       setDueAt("");
+      setProjectId("");
+      setCategoryId("");
     }
     setError(null);
   }, [initialTask, isOpen]);
@@ -72,21 +84,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
 
     try {
-      if (initialTask) {
-        await onSubmit({
-          title: title.trim(),
-          description: description.trim() ? description.trim() : null,
-          priority,
-          dueAt: dueAtUtc,
-        });
-      } else {
-        await onSubmit({
-          title: title.trim(),
-          description: description.trim() ? description.trim() : null,
-          priority,
-          dueAt: dueAtUtc,
-        });
-      }
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim() ? description.trim() : null,
+        priority,
+        dueAt: dueAtUtc,
+        projectId: projectId ? projectId : null,
+        categoryId: categoryId ? categoryId : null,
+      });
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -172,6 +177,46 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 onChange={(e) => setDueAt(e.target.value)}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1.5">
+                Project (Optional)
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="">No Project</option>
+                {projects
+                  .filter((p) => !p.archived || p.id === projectId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.archived ? "(Archived)" : ""}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1.5">
+                Category (Optional)
+              </label>
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              >
+                <option value="">No Category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

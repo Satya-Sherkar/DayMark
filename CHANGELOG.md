@@ -21,5 +21,14 @@ All notable changes to Daymark are documented in this file.
   - Built `TasksPage` with status tabs (All, Pending, Completed), priority filtering, search, and empty states.
   - Built `TaskModal` for creating and editing tasks with date/time pickers and priority selection.
   - Implemented task card with complete/reopen toggling, edit modal trigger, and deletion confirmation.
+- **Phase 2 Projects & Categories:**
+  - Implemented Rust SQLite repository and IPC handlers for Projects and Categories CRUD.
+  - Added unique constraint enforcement on category names and `ON DELETE SET NULL` cascades for task assignments.
+  - Added unit test suite covering project and category lifecycle, validations, and referential cascades.
+  - Created typed frontend services (`projectService`, `categoryService`) and TypeScript interfaces.
+  - Added `ProjectModal` and `CategoryModal` supporting 10 curated color themes.
+  - Added `ProjectBadge` and `CategoryBadge` indicators to task cards.
+  - Integrated Project and Category sections into `Sidebar` with quick creation, editing, deletion, and scoping.
+  - Added Project and Category dropdown filters and active filter indicators to `TasksPage`.
 - **Documentation:**
   - Created `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`, and `docs/ROADMAP.md`.

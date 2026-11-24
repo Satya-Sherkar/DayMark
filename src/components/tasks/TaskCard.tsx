@@ -1,10 +1,16 @@
 import { Calendar, CheckCircle2, Circle, Clock, Edit2, Trash2 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { Task } from "../../types/task";
+import { Project } from "../../types/project";
+import { Category } from "../../types/category";
 import { PriorityBadge } from "./PriorityBadge";
+import { ProjectBadge } from "./ProjectBadge";
+import { CategoryBadge } from "./CategoryBadge";
 
 interface TaskCardProps {
   task: Task;
+  project?: Project | null;
+  category?: Category | null;
   onToggleComplete: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
@@ -12,6 +18,8 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,
+  project,
+  category,
   onToggleComplete,
   onEdit,
   onDelete,
@@ -72,7 +80,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </p>
           )}
 
-          <div className="mt-2.5 flex items-center gap-3 text-xs">
+          <div className="mt-2.5 flex items-center flex-wrap gap-2 text-xs">
             {formattedDue && (
               <span
                 className={`inline-flex items-center gap-1 font-medium ${
@@ -85,6 +93,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 {formattedDue} {isOverdue && "(Overdue)"}
               </span>
             )}
+            {project && <ProjectBadge project={project} />}
+            {category && <CategoryBadge category={category} />}
           </div>
         </div>
       </div>

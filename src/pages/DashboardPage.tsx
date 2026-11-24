@@ -9,6 +9,8 @@ import {
   Plus,
 } from "lucide-react";
 import { DashboardSummary, Task } from "../types/task";
+import { Project } from "../types/project";
+import { Category } from "../types/category";
 import { TaskCard } from "../components/tasks/TaskCard";
 
 interface DashboardPageProps {
@@ -19,6 +21,8 @@ interface DashboardPageProps {
   onDeleteTask: (id: string) => void;
   onOpenQuickAdd: () => void;
   onViewAllTasks: () => void;
+  projects?: Project[];
+  categories?: Category[];
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -29,6 +33,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onDeleteTask,
   onOpenQuickAdd,
   onViewAllTasks,
+  projects = [],
+  categories = [],
 }) => {
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -159,15 +165,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
           <div className="space-y-2.5">
-            {overdueTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggleComplete={onToggleComplete}
-                onEdit={onEditTask}
-                onDelete={onDeleteTask}
-              />
-            ))}
+            {overdueTasks.map((task) => {
+              const project = projects.find((p) => p.id === task.projectId);
+              const category = categories.find((c) => c.id === task.categoryId);
+              return (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  project={project}
+                  category={category}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -204,15 +216,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {dueTodayTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onToggleComplete={onToggleComplete}
-                onEdit={onEditTask}
-                onDelete={onDeleteTask}
-              />
-            ))}
+            {dueTodayTasks.map((task) => {
+              const project = projects.find((p) => p.id === task.projectId);
+              const category = categories.find((c) => c.id === task.categoryId);
+              return (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  project={project}
+                  category={category}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEditTask}
+                  onDelete={onDeleteTask}
+                />
+              );
+            })}
           </div>
         )}
       </div>

@@ -97,3 +97,12 @@ CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_time ON reminders(remind_at);
 CREATE INDEX IF NOT EXISTS idx_activity_time ON activity_logs(occurred_at);
 ```
+
+---
+
+## 4. Referential Integrity & Deletion Rules
+
+- **Tasks ↔ Projects:** `project_id REFERENCES projects(id) ON DELETE SET NULL`. Deleting a project never destroys tasks; it smoothly unassigns the task so user work is preserved.
+- **Tasks ↔ Categories:** `category_id REFERENCES categories(id) ON DELETE SET NULL`. Deleting a category preserves all tasks with the category removed.
+- **Reminders ↔ Tasks:** `task_id REFERENCES tasks(id) ON DELETE CASCADE`. Deleting a task automatically cleans up its pending reminders.
+

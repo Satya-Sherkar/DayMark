@@ -32,6 +32,16 @@ pub fn run() {
             commands::tasks::reopen_task,
             commands::tasks::delete_task,
             commands::tasks::get_dashboard_summary,
+            commands::projects::create_project,
+            commands::projects::get_project,
+            commands::projects::list_projects,
+            commands::projects::update_project,
+            commands::projects::delete_project,
+            commands::categories::create_category,
+            commands::categories::get_category,
+            commands::categories::list_categories,
+            commands::categories::update_category,
+            commands::categories::delete_category,
         ])
         .run(tauri::generate_context!())
         .expect("error while running daymark desktop application");

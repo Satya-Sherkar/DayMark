@@ -3,9 +3,33 @@ use rusqlite::{params, Connection, Row};
 use uuid::Uuid;
 
 use crate::models::{
-    CreateTaskInput, DashboardSummary, Task, TaskFilters, TaskPriority, TaskStatus,
+    Category, CreateCategoryInput, CreateProjectInput, CreateTaskInput, DashboardSummary,
+    Project, Task, TaskFilters, TaskPriority, TaskStatus, UpdateCategoryInput, UpdateProjectInput,
     UpdateTaskInput,
 };
+
+fn row_to_project(row: &Row) -> rusqlite::Result<Project> {
+    let archived_int: i64 = row.get("archived")?;
+    Ok(Project {
+        id: row.get("id")?,
+        name: row.get("name")?,
+        description: row.get("description")?,
+        color: row.get("color")?,
+        archived: archived_int != 0,
+        created_at: row.get("created_at")?,
+        updated_at: row.get("updated_at")?,
+    })
+}
+
+fn row_to_category(row: &Row) -> rusqlite::Result<Category> {
+    Ok(Category {
+        id: row.get("id")?,
+        name: row.get("name")?,
+        color: row.get("color")?,
+        created_at: row.get("created_at")?,
+        updated_at: row.get("updated_at")?,
+    })
+}
 
 fn row_to_task(row: &Row) -> rusqlite::Result<Task> {
     let status_str: String = row.get("status")?;
@@ -363,6 +387,243 @@ pub fn get_dashboard_summary(conn: &Connection) -> Result<DashboardSummary, Stri
     })
 }
 
+// -----------------------------------------------------------------------------
+// Projects Repository
+// -----------------------------------------------------------------------------
+
+pub fn create_project(conn: &Connection, input: CreateProjectInput) -> Result<Project, String> {
+    let trimmed_name = input.name.trim();
+    if trimmed_name.is_empty() {
+        return Err("Project name cannot be empty".to_string());
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    let color = input.color.unwrap_or_else(|| "#3b82f6".to_string());
+
+    conn.execute(
+        "INSERT INTO projects (id, name, description, color, archived, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6)",
+        params![&id, trimmed_name, &input.description, &color, &now, &now],
+    )
+    .map_err(|e| format!("Failed to create project: {}", e))?;
+
+    get_project(conn, &id)
+}
+
+pub fn get_project(conn: &Connection, id: &str) -> Result<Project, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, description, color, archived, created_at, updated_at
+             FROM projects WHERE id = ?1",
+        )
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    stmt.query_row(params![id], row_to_project)
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => format!("Project with ID '{}' not found", id),
+            other => format!("Database error retrieving project: {}", other),
+        })
+}
+
+pub fn list_projects(conn: &Connection, include_archived: bool) -> Result<Vec<Project>, String> {
+    let query = if include_archived {
+        "SELECT id, name, description, color, archived, created_at, updated_at
+         FROM projects ORDER BY name ASC"
+    } else {
+        "SELECT id, name, description, color, archived, created_at, updated_at
+         FROM projects WHERE archived = 0 ORDER BY name ASC"
+    };
+
+    let mut stmt = conn
+        .prepare(query)
+        .map_err(|e| format!("Failed to prepare list projects query: {}", e))?;
+
+    let rows = stmt
+        .query_map([], row_to_project)
+        .map_err(|e| format!("Failed to query projects: {}", e))?;
+
+    let mut projects = Vec::new();
+    for r in rows {
+        projects.push(r.map_err(|e| format!("Failed to read project row: {}", e))?);
+    }
+
+    Ok(projects)
+}
+
+pub fn update_project(
+    conn: &Connection,
+    id: &str,
+    input: UpdateProjectInput,
+) -> Result<Project, String> {
+    let existing = get_project(conn, id)?;
+    let now = Utc::now().to_rfc3339();
+
+    let new_name = match input.name {
+        Some(n) => {
+            let trimmed = n.trim().to_string();
+            if trimmed.is_empty() {
+                return Err("Project name cannot be empty".to_string());
+            }
+            trimmed
+        }
+        None => existing.name,
+    };
+
+    let new_description = match input.description {
+        Some(opt) => opt,
+        None => existing.description,
+    };
+
+    let new_color = input.color.unwrap_or(existing.color);
+    let new_archived = input.archived.unwrap_or(existing.archived);
+
+    conn.execute(
+        "UPDATE projects SET
+            name = ?1,
+            description = ?2,
+            color = ?3,
+            archived = ?4,
+            updated_at = ?5
+         WHERE id = ?6",
+        params![
+            &new_name,
+            &new_description,
+            &new_color,
+            if new_archived { 1 } else { 0 },
+            &now,
+            id,
+        ],
+    )
+    .map_err(|e| format!("Failed to update project: {}", e))?;
+
+    get_project(conn, id)
+}
+
+pub fn delete_project(conn: &Connection, id: &str) -> Result<(), String> {
+    let rows_affected = conn
+        .execute("DELETE FROM projects WHERE id = ?1", params![id])
+        .map_err(|e| format!("Failed to delete project: {}", e))?;
+
+    if rows_affected == 0 {
+        return Err(format!("Project with ID '{}' not found", id));
+    }
+
+    Ok(())
+}
+
+// -----------------------------------------------------------------------------
+// Categories Repository
+// -----------------------------------------------------------------------------
+
+pub fn create_category(conn: &Connection, input: CreateCategoryInput) -> Result<Category, String> {
+    let trimmed_name = input.name.trim();
+    if trimmed_name.is_empty() {
+        return Err("Category name cannot be empty".to_string());
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    let color = input.color.unwrap_or_else(|| "#64748b".to_string());
+
+    conn.execute(
+        "INSERT INTO categories (id, name, color, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![&id, trimmed_name, &color, &now, &now],
+    )
+    .map_err(|e| {
+        let err_str = e.to_string();
+        if err_str.contains("UNIQUE constraint failed") {
+            format!("Category with name '{}' already exists", trimmed_name)
+        } else {
+            format!("Failed to create category: {}", e)
+        }
+    })?;
+
+    get_category(conn, &id)
+}
+
+pub fn get_category(conn: &Connection, id: &str) -> Result<Category, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, color, created_at, updated_at
+             FROM categories WHERE id = ?1",
+        )
+        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+
+    stmt.query_row(params![id], row_to_category)
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => format!("Category with ID '{}' not found", id),
+            other => format!("Database error retrieving category: {}", other),
+        })
+}
+
+pub fn list_categories(conn: &Connection) -> Result<Vec<Category>, String> {
+    let mut stmt = conn
+        .prepare("SELECT id, name, color, created_at, updated_at FROM categories ORDER BY name ASC")
+        .map_err(|e| format!("Failed to prepare list categories query: {}", e))?;
+
+    let rows = stmt
+        .query_map([], row_to_category)
+        .map_err(|e| format!("Failed to query categories: {}", e))?;
+
+    let mut categories = Vec::new();
+    for r in rows {
+        categories.push(r.map_err(|e| format!("Failed to read category row: {}", e))?);
+    }
+
+    Ok(categories)
+}
+
+pub fn update_category(
+    conn: &Connection,
+    id: &str,
+    input: UpdateCategoryInput,
+) -> Result<Category, String> {
+    let existing = get_category(conn, id)?;
+    let now = Utc::now().to_rfc3339();
+
+    let new_name = match input.name {
+        Some(n) => {
+            let trimmed = n.trim().to_string();
+            if trimmed.is_empty() {
+                return Err("Category name cannot be empty".to_string());
+            }
+            trimmed
+        }
+        None => existing.name,
+    };
+
+    let new_color = input.color.unwrap_or(existing.color);
+
+    conn.execute(
+        "UPDATE categories SET name = ?1, color = ?2, updated_at = ?3 WHERE id = ?4",
+        params![&new_name, &new_color, &now, id],
+    )
+    .map_err(|e| {
+        let err_str = e.to_string();
+        if err_str.contains("UNIQUE constraint failed") {
+            format!("Category with name '{}' already exists", new_name)
+        } else {
+            format!("Failed to update category: {}", e)
+        }
+    })?;
+
+    get_category(conn, id)
+}
+
+pub fn delete_category(conn: &Connection, id: &str) -> Result<(), String> {
+    let rows_affected = conn
+        .execute("DELETE FROM categories WHERE id = ?1", params![id])
+        .map_err(|e| format!("Failed to delete category: {}", e))?;
+
+    if rows_affected == 0 {
+        return Err(format!("Category with ID '{}' not found", id));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -546,5 +807,223 @@ mod tests {
         .unwrap();
         assert_eq!(priority_results.len(), 1);
         assert_eq!(priority_results[0].title, "Prepare report");
+    }
+
+    #[test]
+    fn test_project_crud() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        // 1. Create project
+        let created = create_project(
+            &conn,
+            CreateProjectInput {
+                name: "Work Project".to_string(),
+                description: Some("Work tasks".to_string()),
+                color: Some("#2563eb".to_string()),
+            },
+        )
+        .expect("create project");
+        assert_eq!(created.name, "Work Project");
+        assert_eq!(created.color, "#2563eb");
+        assert!(!created.archived);
+
+        // 2. Read project
+        let fetched = get_project(&conn, &created.id).expect("get project");
+        assert_eq!(fetched.id, created.id);
+        assert_eq!(fetched.name, "Work Project");
+
+        // 3. Update project
+        let updated = update_project(
+            &conn,
+            &created.id,
+            UpdateProjectInput {
+                name: Some("Daymark Core".to_string()),
+                color: Some("#10b981".to_string()),
+                archived: Some(true),
+                ..Default::default()
+            },
+        )
+        .expect("update project");
+        assert_eq!(updated.name, "Daymark Core");
+        assert_eq!(updated.color, "#10b981");
+        assert!(updated.archived);
+
+        // 4. List projects
+        let active_only = list_projects(&conn, false).expect("list active");
+        assert_eq!(active_only.len(), 0);
+        let all = list_projects(&conn, true).expect("list all");
+        assert_eq!(all.len(), 1);
+
+        // 5. Delete project
+        delete_project(&conn, &created.id).expect("delete project");
+        assert!(get_project(&conn, &created.id).is_err());
+    }
+
+    #[test]
+    fn test_project_validation() {
+        let conn = init_in_memory_db().expect("init in memory db");
+        assert!(create_project(
+            &conn,
+            CreateProjectInput {
+                name: "   ".to_string(),
+                description: None,
+                color: None,
+            }
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn test_category_crud() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        // 1. Create category
+        let created = create_category(
+            &conn,
+            CreateCategoryInput {
+                name: "Personal".to_string(),
+                color: Some("#f59e0b".to_string()),
+            },
+        )
+        .expect("create category");
+        assert_eq!(created.name, "Personal");
+        assert_eq!(created.color, "#f59e0b");
+
+        // 2. Read category
+        let fetched = get_category(&conn, &created.id).expect("get category");
+        assert_eq!(fetched.id, created.id);
+
+        // 3. Update category
+        let updated = update_category(
+            &conn,
+            &created.id,
+            UpdateCategoryInput {
+                name: Some("Fitness".to_string()),
+                color: Some("#ec4899".to_string()),
+            },
+        )
+        .expect("update category");
+        assert_eq!(updated.name, "Fitness");
+        assert_eq!(updated.color, "#ec4899");
+
+        // 4. List categories
+        let list = list_categories(&conn).expect("list categories");
+        assert_eq!(list.len(), 1);
+
+        // 5. Delete category
+        delete_category(&conn, &created.id).expect("delete category");
+        assert!(get_category(&conn, &created.id).is_err());
+    }
+
+    #[test]
+    fn test_category_unique_constraint() {
+        let conn = init_in_memory_db().expect("init in memory db");
+        create_category(
+            &conn,
+            CreateCategoryInput {
+                name: "Finance".to_string(),
+                color: None,
+            },
+        )
+        .expect("first create");
+
+        let err = create_category(
+            &conn,
+            CreateCategoryInput {
+                name: "Finance".to_string(),
+                color: None,
+            },
+        );
+        assert!(err.is_err());
+        assert!(err.unwrap_err().contains("already exists"));
+    }
+
+    #[test]
+    fn test_task_project_and_category_assignment_and_filtering() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let project = create_project(
+            &conn,
+            CreateProjectInput {
+                name: "Alpha".to_string(),
+                description: None,
+                color: Some("#3b82f6".to_string()),
+            },
+        )
+        .expect("create project");
+
+        let category = create_category(
+            &conn,
+            CreateCategoryInput {
+                name: "Design".to_string(),
+                color: Some("#8b5cf6".to_string()),
+            },
+        )
+        .expect("create category");
+
+        let task1 = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Mockup landing page".to_string(),
+                description: None,
+                priority: Some(TaskPriority::High),
+                due_at: None,
+                project_id: Some(project.id.clone()),
+                category_id: Some(category.id.clone()),
+                recurrence_rule: None,
+            },
+        )
+        .expect("create task 1");
+        assert_eq!(task1.project_id.as_deref(), Some(project.id.as_str()));
+        assert_eq!(task1.category_id.as_deref(), Some(category.id.as_str()));
+
+        let _task2 = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Unassigned task".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Low),
+                due_at: None,
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .expect("create task 2");
+
+        // Filter by project
+        let project_filtered = list_tasks(
+            &conn,
+            TaskFilters {
+                project_id: Some(project.id.clone()),
+                ..Default::default()
+            },
+        )
+        .expect("filter by project");
+        assert_eq!(project_filtered.len(), 1);
+        assert_eq!(project_filtered[0].title, "Mockup landing page");
+
+        // Filter by category
+        let category_filtered = list_tasks(
+            &conn,
+            TaskFilters {
+                category_id: Some(category.id.clone()),
+                ..Default::default()
+            },
+        )
+        .expect("filter by category");
+        assert_eq!(category_filtered.len(), 1);
+        assert_eq!(category_filtered[0].title, "Mockup landing page");
+
+        // Test ON DELETE SET NULL for project
+        delete_project(&conn, &project.id).expect("delete project");
+        let task_after_proj_del = get_task(&conn, &task1.id).expect("get task after proj del");
+        assert!(task_after_proj_del.project_id.is_none());
+        assert_eq!(task_after_proj_del.category_id.as_deref(), Some(category.id.as_str()));
+
+        // Test ON DELETE SET NULL for category
+        delete_category(&conn, &category.id).expect("delete category");
+        let task_after_cat_del = get_task(&conn, &task1.id).expect("get task after cat del");
+        assert!(task_after_cat_del.category_id.is_none());
     }
 }

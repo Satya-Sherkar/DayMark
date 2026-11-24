@@ -70,14 +70,15 @@ DayMark/
 │   ├── DEVELOPMENT.md     # Local setup and workflow commands
 │   └── ROADMAP.md         # Phased implementation plan
 ├── src/                   # React 19 frontend
-│   ├── components/        # Layout, task cards, modals, badges
+│   ├── components/        # Layout, task cards, project/category modals, badges
+│   ├── constants/         # Predefined color palettes
 │   ├── pages/             # Dashboard, My Tasks, Today, Upcoming
-│   ├── services/          # Typed Tauri IPC client
+│   ├── services/          # Typed Tauri IPC clients (tasks, projects, categories)
 │   └── types/             # TypeScript domain DTOs
 ├── src-tauri/             # Rust desktop backend
 │   ├── migrations/        # SQL migration files
 │   ├── src/
-│   │   ├── commands/      # Tauri IPC command handlers
+│   │   ├── commands/      # Tauri IPC command handlers (tasks, projects, categories)
 │   │   ├── db/            # Connection manager, migrations, repo
 │   │   ├── models/        # Rust structs with Serde
 │   │   ├── state.rs       # App state with Mutex<Connection>

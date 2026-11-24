@@ -27,11 +27,12 @@ This roadmap outlines the planned development phases for Daymark.
 
 ---
 
-### [ ] Phase 2 — Projects, Categories, Advanced Filtering
-- CRUD commands for Projects and Categories.
-- Project and Category assignment in task form and task card badges.
-- Filtering tasks by project and category.
-- Color coding for projects and categories.
+### [x] Phase 2 — Projects, Categories, Advanced Filtering
+- CRUD commands for Projects and Categories (`create_project`, `get_project`, `list_projects`, `update_project`, `delete_project`, `create_category`, `get_category`, `list_categories`, `update_category`, `delete_category`).
+- Project and Category assignment in task modal form and task card badges.
+- Filtering tasks by project and category from both the sidebar navigation and filter dropdowns.
+- Color coding with preset palette for projects and categories.
+- Backend unit test suite covering CRUD, unique constraints, and referential integrity (`ON DELETE SET NULL`).
 
 ---
 

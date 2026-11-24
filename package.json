@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:app": "pnpm build && tauri build",
+    "install:local": "pnpm tauri build && sudo dpkg -i src-tauri/target/release/bundle/deb/Daymark_*.deb",
+    "uninstall:local": "sudo apt remove -y daymark"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

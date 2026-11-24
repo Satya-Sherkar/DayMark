@@ -6,6 +6,27 @@ It operates completely locally on your machine with zero cloud dependencies, zer
 
 ---
 
+## 📦 Quick Installation
+
+### Option 1: Install Pre-Built `.deb` Package (Recommended)
+Download the latest Debian package from [Releases](https://github.com/Daymark/Daymark/releases) and install:
+```bash
+sudo apt install ./Daymark_0.1.0_amd64.deb
+```
+Or double-click the `.deb` file in your GNOME file manager to install via Ubuntu Software.
+
+### Option 2: Build & Install Locally in 1 Command
+If you have cloned this repository, install the app onto your Linux desktop system with:
+```bash
+pnpm run install:local
+```
+Or use the automated setup script:
+```bash
+./scripts/install-local.sh
+```
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Desktop Shell:** Tauri 2 (WebKitGTK, GNOME integration)

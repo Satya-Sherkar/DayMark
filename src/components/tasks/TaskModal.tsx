@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { X } from "lucide-react";
 import { CreateTaskInput, Task, TaskPriority, UpdateTaskInput } from "../../types/task";
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
+import { Select, SelectOption } from "../ui/Select";
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -29,6 +30,39 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [categoryId, setCategoryId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const priorityOptions: SelectOption<TaskPriority>[] = [
+    { value: "low", label: "Low", color: "#77746D" },
+    { value: "medium", label: "Medium", color: "#C48439" },
+    { value: "high", label: "High", color: "#D17B54" },
+    { value: "urgent", label: "Urgent", color: "#C64D38" },
+  ];
+
+  const projectOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "No Project" },
+      ...projects
+        .filter((p) => !p.archived || p.id === projectId)
+        .map((p) => ({
+          value: p.id,
+          label: `${p.name}${p.archived ? " (Archived)" : ""}`,
+          color: p.color || undefined,
+        })),
+    ],
+    [projects, projectId]
+  );
+
+  const categoryOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "No Category" },
+      ...categories.map((c) => ({
+        value: c.id,
+        label: c.name,
+        color: c.color || undefined,
+      })),
+    ],
+    [categories]
+  );
 
   useEffect(() => {
     if (initialTask) {
@@ -164,16 +198,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
                 Priority
               </label>
-              <select
+              <Select<TaskPriority>
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+                onChange={(val) => setPriority(val)}
+                options={priorityOptions}
+                className="w-full"
+              />
             </div>
 
             <div>
@@ -194,38 +224,24 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
                 Project (Optional)
               </label>
-              <select
+              <Select
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-              >
-                <option value="">No Project</option>
-                {projects
-                  .filter((p) => !p.archived || p.id === projectId)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} {p.archived ? "(Archived)" : ""}
-                    </option>
-                  ))}
-              </select>
+                onChange={(val) => setProjectId(val)}
+                options={projectOptions}
+                className="w-full"
+              />
             </div>
 
             <div>
               <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
                 Category (Optional)
               </label>
-              <select
+              <Select
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3 py-2 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-              >
-                <option value="">No Category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setCategoryId(val)}
+                options={categoryOptions}
+                className="w-full"
+              />
             </div>
           </div>
 

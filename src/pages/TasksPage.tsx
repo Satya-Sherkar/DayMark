@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Filter, Plus, X, Inbox } from "lucide-react";
 import { Task } from "../types/task";
 import { Project } from "../types/project";
 import { Category } from "../types/category";
 import { TaskCard } from "../components/tasks/TaskCard";
+import { Select, SelectOption } from "../components/ui/Select";
 
 interface TasksPageProps {
   tasks: Task[];
@@ -47,6 +48,38 @@ export const TasksPage: React.FC<TasksPageProps> = ({
     { id: "pending", label: "Pending" },
     { id: "completed", label: "Completed" },
   ];
+
+  const priorityOptions: SelectOption[] = [
+    { value: "all", label: "All Priorities" },
+    { value: "urgent", label: "Urgent", color: "#C64D38" },
+    { value: "high", label: "High", color: "#D17B54" },
+    { value: "medium", label: "Medium", color: "#C48439" },
+    { value: "low", label: "Low", color: "#77746D" },
+  ];
+
+  const projectOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "All Projects" },
+      ...projects.map((p) => ({
+        value: p.id,
+        label: `${p.name}${p.archived ? " (Archived)" : ""}`,
+        color: p.color || undefined,
+      })),
+    ],
+    [projects]
+  );
+
+  const categoryOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "All Categories" },
+      ...categories.map((c) => ({
+        value: c.id,
+        label: c.name,
+        color: c.color || undefined,
+      })),
+    ],
+    [categories]
+  );
 
   const activeProject = selectedProjectId
     ? projects.find((p) => p.id === selectedProjectId)
@@ -138,43 +171,30 @@ export const TasksPage: React.FC<TasksPageProps> = ({
             </span>
           </div>
 
-          <select
+          <Select
+            size="sm"
+            className="min-w-[125px]"
             value={priorityFilter}
-            onChange={(e) => onPriorityFilterChange(e.target.value)}
-            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-          >
-            <option value="all">All Priorities</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+            onChange={(val) => onPriorityFilterChange(val)}
+            options={priorityOptions}
+          />
 
-          <select
+          <Select
+            size="sm"
+            className="min-w-[120px]"
             value={selectedProjectId || ""}
-            onChange={(e) => onSelectProject && onSelectProject(e.target.value || null)}
-            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-          >
-            <option value="">All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.archived ? "(Archived)" : ""}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onSelectProject && onSelectProject(val || null)}
+            options={projectOptions}
+          />
 
-          <select
+          <Select
+            size="sm"
+            className="min-w-[125px]"
+            align="right"
             value={selectedCategoryId || ""}
-            onChange={(e) => onSelectCategory && onSelectCategory(e.target.value || null)}
-            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => onSelectCategory && onSelectCategory(val || null)}
+            options={categoryOptions}
+          />
 
           <button
             onClick={onOpenQuickAdd}

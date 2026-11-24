@@ -1,14 +1,15 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use rusqlite::Connection;
 
+#[derive(Clone)]
 pub struct AppState {
-    pub db: Mutex<Connection>,
+    pub db: Arc<Mutex<Connection>>,
 }
 
 impl AppState {
     pub fn new(conn: Connection) -> Self {
         Self {
-            db: Mutex::new(conn),
+            db: Arc::new(Mutex::new(conn)),
         }
     }
 }

@@ -37,9 +37,20 @@ All notable changes to Daymark are documented in this file.
   - Added `CalendarPage` featuring interactive Month and Week views with due date indicators, status toggling, and date-prefilled quick add.
   - Integrated recurrence selection in `TaskModal` and recurrence indicator badges in `TaskCard`.
   - Added Calendar view to the navigation sidebar and application routing.
+- **Phase 4 Reminders & Native Notifications:**
+  - Added `Reminder`, `CreateReminderInput`, and `DueReminder` Rust models and TypeScript interfaces.
+  - Implemented SQLite repository methods for reminder CRUD, atomic delivery tracking, and missed-reminder recovery.
+  - Built background low-frequency scheduler thread running every 15 seconds with `Arc<Mutex<Connection>>` concurrency.
+  - Integrated `tauri-plugin-notification` for native desktop notifications conforming to GNOME/FreeDesktop standards.
+  - Implemented typed Tauri IPC commands: `create_reminder`, `get_reminder`, `list_reminders_for_task`, `delete_reminder`, `dismiss_reminder`.
+  - Implemented client `reminderService` with permission requests and `reminder-delivered` event listener.
+  - Enhanced `TaskModal` with reminder presets (at due time, 15m, 30m, 1h, 1d before, and custom datetime) and active reminders management.
+  - Created in-app floating reminder alert banner in `App.tsx` with one-click task completion and dismissal.
+  - Added unit test `test_reminder_lifecycle_and_duplicate_protection` verifying scheduling, due querying, atomic delivery, and cascade deletion.
 - **Visual Design System (Swiss Editorial + Obsidian Workshop):**
   - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
   - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.
+  - Replaced native browser date/time inputs with custom `DateTimePicker` component featuring quick date presets (Today, Tomorrow, Weekend, Next Week), month navigation, editorial calendar grid, quick time presets (9 AM, 12 PM, 5 PM, 8 PM), fine-grained hour/minute steppers, and AM/PM segmented controls with downward-preferred positioning and viewport-safe boundary clamping.
   - Redesigned collapsible sidebar, compact aligned header, flat task rows with custom checkboxes, and modal dialogs with 4px–8px radii.
   - Replaced generic metric cards with a unified editorial statistics grid.
 - **Documentation:**

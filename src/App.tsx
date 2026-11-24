@@ -10,11 +10,14 @@ import { CategoryModal } from "./components/categories/CategoryModal";
 import { taskService } from "./services/taskService";
 import { projectService } from "./services/projectService";
 import { categoryService } from "./services/categoryService";
+import { reminderService } from "./services/reminderService";
 import { CreateTaskInput, DashboardSummary, Task, UpdateTaskInput } from "./types/task";
 import { CreateProjectInput, Project, UpdateProjectInput } from "./types/project";
 import { Category, CreateCategoryInput, UpdateCategoryInput } from "./types/category";
+import { DueReminder } from "./types/reminder";
 import { useZoom } from "./hooks/useZoom";
 import { ZoomIndicator } from "./components/ui/ZoomIndicator";
+import { Bell, X, CheckCircle2 } from "lucide-react";
 import "./App.css";
 
 export function App() {
@@ -43,6 +46,9 @@ export function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [modalDueAt, setModalDueAt] = useState<string | null>(null);
 
+  // Active Alert for delivered reminders
+  const [activeAlert, setActiveAlert] = useState<DueReminder | null>(null);
+
   // Modal State for Projects
   const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -53,6 +59,13 @@ export function App() {
 
   // Sidebar Collapse State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  // Request desktop notification permission on startup
+  useEffect(() => {
+    reminderService.ensurePermission().catch((err) => {
+      console.warn("Could not request notification permissions:", err);
+    });
+  }, []);
 
   // Apply dark class to html document element
   useEffect(() => {
@@ -109,6 +122,23 @@ export function App() {
     loadData();
   }, [loadData]);
 
+  // Listen for background reminder deliveries
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    reminderService
+      .onReminderDelivered((reminder) => {
+        setActiveAlert(reminder);
+        loadData();
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [loadData]);
+
   // Task actions
   const handleToggleComplete = async (task: Task) => {
     try {
@@ -134,13 +164,39 @@ export function App() {
     }
   };
 
-  const handleModalSubmit = async (input: CreateTaskInput | UpdateTaskInput) => {
+  const handleModalSubmit = async (input: CreateTaskInput | UpdateTaskInput): Promise<Task> => {
+    let saved: Task;
     if (editingTask) {
-      await taskService.updateTask(editingTask.id, input);
+      saved = await taskService.updateTask(editingTask.id, input);
     } else {
-      await taskService.createTask(input as CreateTaskInput);
+      saved = await taskService.createTask(input as CreateTaskInput);
     }
     await loadData();
+    return saved;
+  };
+
+  const handleDismissAlert = async () => {
+    if (activeAlert) {
+      try {
+        await reminderService.dismissReminder(activeAlert.id);
+      } catch (err) {
+        console.error("Failed to dismiss reminder:", err);
+      }
+      setActiveAlert(null);
+    }
+  };
+
+  const handleCompleteTaskFromAlert = async () => {
+    if (activeAlert) {
+      try {
+        await taskService.completeTask(activeAlert.taskId);
+        await reminderService.dismissReminder(activeAlert.id);
+        await loadData();
+      } catch (err) {
+        console.error("Failed to complete task from alert:", err);
+      }
+      setActiveAlert(null);
+    }
   };
 
   // Project actions
@@ -400,6 +456,52 @@ export function App() {
         onSubmit={handleCategorySubmit}
         initialCategory={editingCategory}
       />
+
+      {/* In-App Reminder Alert Banner */}
+      {activeAlert && (
+        <div className="fixed top-5 right-5 z-50 max-w-sm w-full animate-in slide-in-from-top-3 fade-in duration-200">
+          <div className="bg-dm-surface border border-dm-border shadow-xl rounded-[8px] p-4 flex flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2 text-dm-accent">
+                <Bell className="w-4 h-4 animate-bounce" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-wider">
+                  Reminder Due
+                </span>
+              </div>
+              <button
+                onClick={handleDismissAlert}
+                className="text-dm-text-secondary hover:text-dm-text-primary p-0.5 rounded hover:bg-dm-bg transition-colors cursor-pointer"
+                title="Dismiss notification"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <h4 className="font-heading text-sm font-semibold text-dm-text-primary leading-tight">
+                {activeAlert.taskTitle}
+              </h4>
+              <p className="text-xs text-dm-text-secondary mt-0.5 font-mono">
+                Priority: <span className="uppercase font-semibold">{activeAlert.taskPriority}</span>
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-dm-border">
+              <button
+                onClick={handleDismissAlert}
+                className="px-2.5 py-1 text-xs font-sans text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-bg rounded-[4px] transition-colors cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={handleCompleteTaskFromAlert}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-sans font-medium text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[4px] transition-colors cursor-pointer shadow-2xs"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Mark Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Zoom Feedback Indicator */}
       <ZoomIndicator percentage={percentage} visible={showIndicator} />

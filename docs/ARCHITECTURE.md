@@ -62,9 +62,59 @@
 | `update_category` | `id: String, input: UpdateCategoryInput` | `Category` | Updates category name and color theme |
 | `delete_category` | `id: String` | `()` | Deletes category; sets associated `tasks.category_id` to NULL |
 
+### Reminder Management
+
+| Command | Arguments | Return Type | Description |
+|---|---|---|---|
+| `create_reminder` | `input: CreateReminderInput` | `Reminder` | Schedules a reminder for a task |
+| `get_reminder` | `id: String` | `Reminder` | Retrieves reminder by UUID |
+| `list_reminders_for_task` | `taskId: String` | `Vec<Reminder>` | Lists all reminders scheduled for a task |
+| `delete_reminder` | `id: String` | `()` | Deletes a scheduled reminder |
+| `dismiss_reminder` | `id: String` | `()` | Marks reminder as dismissed |
+
+### Events (Backend → Frontend)
+
+| Event Name | Payload | Trigger |
+|---|---|---|
+| `reminder-delivered` | `DueReminder` | Emitted when background scheduler delivers a notification |
+
 ---
 
-## 3. Data Transfer Objects (DTOs)
+## 3. Background Scheduler Architecture
+
+```text
+┌────────────────────────────────────────────────────────┐
+│             Background Scheduler Thread                │
+│                 (15s tick loop)                        │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+             Query due undelivered reminders
+         (delivered_at IS NULL AND remind_at <= now)
+                           │
+                           ▼
+          Atomic delivery lock per reminder:
+   UPDATE reminders SET delivered_at = now WHERE id = ?
+               AND delivered_at IS NULL
+                           │
+                 Did we win delivery slot?
+                 ┌─────────┴─────────┐
+                 │ Yes               │ No
+                 ▼                   ▼
+       Dispatch native notification  Skip (already handled)
+         via tauri-plugin-notification
+                 │
+                 ▼
+       Emit 'reminder-delivered' event
+               to Webview UI
+```
+
+- **Thread Concurrency:** Runs inside `std::thread::spawn` with `Arc<Mutex<rusqlite::Connection>>` shared from `AppState`. Lock scope is strictly held for the duration of the query and atomic update.
+- **Atomic Duplicate Protection:** Guaranteed via conditional SQLite update statement.
+- **Missed Reminder Recovery:** On application launch, any reminders that fell due while the system was offline or closed are immediately picked up during the first scheduler tick.
+
+---
+
+## 4. Data Transfer Objects (DTOs)
 
 All types use camelCase serialization in JSON to match TypeScript conventions.
 
@@ -106,11 +156,33 @@ export interface Category {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Reminder {
+  id: string;
+  taskId: string;
+  remindAt: string;
+  deliveredAt: string | null;
+  dismissedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateReminderInput {
+  taskId: string;
+  remindAt: string;
+}
+
+export interface DueReminder {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  taskPriority: string;
+  remindAt: string;
+}
 ```
 
 ---
 
-## 4. Visual Design System
+## 5. Visual Design System
 
 Daymark follows a hybrid **Swiss Editorial + Obsidian Workshop** aesthetic, prioritizing information hierarchy, restrained typography, and flat surfaces over generic SaaS decorations.
 

@@ -6,16 +6,26 @@ import {
   CalendarDays,
   RotateCcw,
   CalendarRange,
+  Bell,
+  BellOff,
+  BellRing,
+  Clock,
+  Calendar,
+  Trash2,
 } from "lucide-react";
 import { CreateTaskInput, Task, TaskPriority, UpdateTaskInput } from "../../types/task";
+import { Reminder } from "../../types/reminder";
+import { reminderService } from "../../services/reminderService";
+import { format } from "date-fns";
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
 import { Select, SelectOption } from "../ui/Select";
+import { DateTimePicker } from "../ui/DateTimePicker";
 
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (input: CreateTaskInput | UpdateTaskInput) => Promise<void>;
+  onSubmit: (input: CreateTaskInput | UpdateTaskInput) => Promise<Task | void>;
   initialTask?: Task | null;
   initialDueAt?: string | null;
   projects?: Project[];
@@ -38,8 +48,56 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [projectId, setProjectId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
   const [recurrenceRule, setRecurrenceRule] = useState<string>("");
+  const [reminderPreset, setReminderPreset] = useState<string>("");
+  const [customReminderTime, setCustomReminderTime] = useState<string>("");
+  const [existingReminders, setExistingReminders] = useState<Reminder[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const reminderPresetOptions: SelectOption[] = [
+    {
+      value: "",
+      label: "No reminder",
+      icon: <BellOff className="w-3.5 h-3.5" />,
+      description: "Do not schedule a notification",
+    },
+    {
+      value: "0",
+      label: "At due time",
+      icon: <Bell className="w-3.5 h-3.5" />,
+      description: "Remind exactly when due",
+    },
+    {
+      value: "15",
+      label: "15 minutes before",
+      icon: <Clock className="w-3.5 h-3.5" />,
+      description: "15m prior to scheduled due time",
+    },
+    {
+      value: "30",
+      label: "30 minutes before",
+      icon: <Clock className="w-3.5 h-3.5" />,
+      description: "30m prior to scheduled due time",
+    },
+    {
+      value: "60",
+      label: "1 hour before",
+      icon: <Clock className="w-3.5 h-3.5" />,
+      description: "1h prior to scheduled due time",
+    },
+    {
+      value: "1440",
+      label: "1 day before",
+      icon: <Calendar className="w-3.5 h-3.5" />,
+      description: "24h prior to scheduled due time",
+    },
+    {
+      value: "custom",
+      label: "Custom time...",
+      icon: <BellRing className="w-3.5 h-3.5" />,
+      description: "Specify an exact date & time",
+    },
+  ];
 
   const recurrenceOptions: SelectOption[] = [
     {
@@ -115,6 +173,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId(initialTask.projectId || "");
       setCategoryId(initialTask.categoryId || "");
       setRecurrenceRule(initialTask.recurrenceRule || "");
+      setReminderPreset("");
+      setCustomReminderTime("");
       if (initialTask.dueAt) {
         try {
           const date = new Date(initialTask.dueAt);
@@ -128,6 +188,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       } else {
         setDueAt("");
       }
+
+      reminderService
+        .listRemindersForTask(initialTask.id)
+        .then(setExistingReminders)
+        .catch((err) => console.error("Failed to list reminders for task:", err));
     } else {
       setTitle("");
       setDescription("");
@@ -136,6 +201,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setProjectId("");
       setCategoryId("");
       setRecurrenceRule("");
+      setReminderPreset("");
+      setCustomReminderTime("");
+      setExistingReminders([]);
     }
     setError(null);
   }, [initialTask, initialDueAt, isOpen]);
@@ -150,12 +218,53 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const handleDeleteExistingReminder = async (reminderId: string) => {
+    try {
+      await reminderService.deleteReminder(reminderId);
+      setExistingReminders((prev) => prev.filter((r) => r.id !== reminderId));
+    } catch (err: unknown) {
+      setError(`Failed to delete reminder: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const computeReminderAt = (preset: string, customTime: string, dueAtLocal: string): string | null => {
+    if (!preset) return null;
+    if (preset === "custom") {
+      if (!customTime) return null;
+      try {
+        return new Date(customTime).toISOString();
+      } catch {
+        return null;
+      }
+    }
+    if (!dueAtLocal) return null;
+    try {
+      const dueDate = new Date(dueAtLocal);
+      if (isNaN(dueDate.getTime())) return null;
+      const minutesBefore = parseInt(preset, 10);
+      if (isNaN(minutesBefore)) return null;
+      return new Date(dueDate.getTime() - minutesBefore * 60 * 1000).toISOString();
+    } catch {
+      return null;
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError("Task title cannot be empty");
+      return;
+    }
+
+    if (reminderPreset && reminderPreset !== "custom" && !dueAt) {
+      setError("To set a relative reminder, please specify a Due Date & Time first, or choose a custom time.");
+      return;
+    }
+
+    if (reminderPreset === "custom" && !customReminderTime) {
+      setError("Please select a date and time for the custom reminder.");
       return;
     }
 
@@ -172,7 +281,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
 
     try {
-      await onSubmit({
+      const saved = await onSubmit({
         title: title.trim(),
         description: description.trim() ? description.trim() : null,
         priority,
@@ -181,6 +290,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         categoryId: categoryId ? categoryId : null,
         recurrenceRule: recurrenceRule ? recurrenceRule : null,
       });
+
+      const targetTaskId = (saved && "id" in saved ? saved.id : undefined) || initialTask?.id;
+      const remindAtIso = computeReminderAt(reminderPreset, customReminderTime, dueAt);
+
+      if (remindAtIso && targetTaskId) {
+        await reminderService.createReminder({
+          taskId: targetTaskId,
+          remindAt: remindAtIso,
+        });
+      }
+
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -256,11 +376,12 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
                 Due Date & Time
               </label>
-              <input
-                type="datetime-local"
+              <DateTimePicker
                 value={dueAt}
-                onChange={(e) => setDueAt(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary text-xs font-mono focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent"
+                onChange={setDueAt}
+                placeholder="Set due date & time..."
+                align="right"
+                direction="down"
               />
             </div>
           </div>
@@ -291,18 +412,98 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
-              Recurrence (Optional)
-            </label>
-            <Select
-              value={recurrenceRule}
-              onChange={(val) => setRecurrenceRule(val)}
-              options={recurrenceOptions}
-              direction="auto"
-              className="w-full"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
+                Recurrence (Optional)
+              </label>
+              <Select
+                value={recurrenceRule}
+                onChange={(val) => setRecurrenceRule(val)}
+                options={recurrenceOptions}
+                direction="auto"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
+                Add Reminder (Optional)
+              </label>
+              <Select
+                value={reminderPreset}
+                onChange={(val) => setReminderPreset(val)}
+                options={reminderPresetOptions}
+                direction="auto"
+                className="w-full"
+              />
+            </div>
           </div>
+
+          {reminderPreset === "custom" && (
+            <div>
+              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
+                Custom Reminder Date & Time
+              </label>
+              <DateTimePicker
+                value={customReminderTime}
+                onChange={setCustomReminderTime}
+                placeholder="Pick reminder date & time..."
+                align="right"
+                direction="auto"
+              />
+            </div>
+          )}
+
+          {/* Existing Scheduled Reminders (for Edit Task) */}
+          {existingReminders.length > 0 && (
+            <div className="pt-1">
+              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1.5">
+                Active Reminders ({existingReminders.length})
+              </label>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
+                {existingReminders.map((rem) => {
+                  const isDelivered = !!rem.deliveredAt;
+                  const isDismissed = !!rem.dismissedAt;
+                  let dateFormatted = "";
+                  try {
+                    dateFormatted = format(new Date(rem.remindAt), "MMM d, yyyy · h:mm a");
+                  } catch {
+                    dateFormatted = rem.remindAt;
+                  }
+                  return (
+                    <div
+                      key={rem.id}
+                      className="flex items-center justify-between px-3 py-1.5 bg-dm-bg border border-dm-border rounded-[6px] text-xs font-mono"
+                    >
+                      <div className="flex items-center gap-2 text-dm-text-secondary truncate mr-2">
+                        <Bell className="w-3.5 h-3.5 text-dm-accent shrink-0" />
+                        <span className="text-dm-text-primary truncate">{dateFormatted}</span>
+                        {isDelivered && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-dm-surface text-dm-text-secondary border border-dm-border shrink-0">
+                            {isDismissed ? "Dismissed" : "Delivered"}
+                          </span>
+                        )}
+                        {!isDelivered && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-dm-accent/10 text-dm-accent border border-dm-accent/20 shrink-0">
+                            Scheduled
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExistingReminder(rem.id)}
+                        className="p-1 text-dm-text-secondary hover:text-dm-accent transition-colors cursor-pointer rounded shrink-0"
+                        title="Delete reminder"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-dm-border">
             <button

@@ -44,11 +44,16 @@ This roadmap outlines the planned development phases for Daymark.
 
 ---
 
-### [ ] Phase 4 — Reminders & Native Notifications
-- Task reminder scheduling in SQLite.
-- Background low-frequency scheduler checking due reminders.
-- Native desktop notifications via `tauri-plugin-notification`.
-- Duplicate dispatch protection and missed-reminder recovery.
+### [x] Phase 4 — Reminders & Native Notifications
+- Task reminder scheduling in SQLite (`reminders` table).
+- Low-frequency background scheduler running in a dedicated Rust thread (15s interval).
+- Native desktop notifications via `tauri-plugin-notification` (D-Bus `org.freedesktop.Notifications`).
+- Atomic duplicate dispatch protection (`mark_reminder_delivered_atomic`) and missed-reminder recovery on startup.
+- Frontend integration:
+  - Relative presets (at due time, 15m, 30m, 1h, 1d) and custom datetime selection in `TaskModal`.
+  - Active reminders list with one-click deletion for existing tasks.
+  - In-app floating alert banner with quick dismiss and mark-as-complete actions.
+- Unit test suite verifying scheduling, due queries, duplicate protection, and cascade cleanup.
 
 ---
 

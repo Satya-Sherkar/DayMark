@@ -3,9 +3,9 @@ use rusqlite::{params, Connection, Row};
 use uuid::Uuid;
 
 use crate::models::{
-    Category, CreateCategoryInput, CreateProjectInput, CreateTaskInput, DashboardSummary,
-    Project, Task, TaskFilters, TaskPriority, TaskStatus, UpdateCategoryInput, UpdateProjectInput,
-    UpdateTaskInput,
+    Category, CreateCategoryInput, CreateProjectInput, CreateReminderInput, CreateTaskInput,
+    DashboardSummary, DueReminder, Project, Reminder, Task, TaskFilters, TaskPriority, TaskStatus,
+    UpdateCategoryInput, UpdateProjectInput, UpdateTaskInput,
 };
 
 fn row_to_project(row: &Row) -> rusqlite::Result<Project> {
@@ -728,6 +728,164 @@ pub fn delete_category(conn: &Connection, id: &str) -> Result<(), String> {
     Ok(())
 }
 
+// ==========================================
+// Reminders Repository
+// ==========================================
+
+fn row_to_reminder(row: &Row) -> rusqlite::Result<Reminder> {
+    Ok(Reminder {
+        id: row.get(0)?,
+        task_id: row.get(1)?,
+        remind_at: row.get(2)?,
+        delivered_at: row.get(3)?,
+        dismissed_at: row.get(4)?,
+        created_at: row.get(5)?,
+    })
+}
+
+pub fn create_reminder(conn: &Connection, input: CreateReminderInput) -> Result<Reminder, String> {
+    let remind_at_trimmed = input.remind_at.trim();
+    if remind_at_trimmed.is_empty() {
+        return Err("Reminder time cannot be empty".to_string());
+    }
+
+    // Verify task exists
+    let _task = get_task(conn, &input.task_id)?;
+
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+
+    conn.execute(
+        "INSERT INTO reminders (id, task_id, remind_at, created_at)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![&id, &input.task_id, remind_at_trimmed, &now],
+    )
+    .map_err(|e| format!("Failed to insert reminder: {}", e))?;
+
+    let _ = conn.execute(
+        "INSERT INTO activity_logs (id, task_id, action, metadata_json, occurred_at)
+         VALUES (?1, ?2, 'reminder_scheduled', NULL, ?3)",
+        params![Uuid::new_v4().to_string(), &input.task_id, &now],
+    );
+
+    get_reminder(conn, &id)
+}
+
+pub fn get_reminder(conn: &Connection, id: &str) -> Result<Reminder, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, task_id, remind_at, delivered_at, dismissed_at, created_at
+             FROM reminders WHERE id = ?1",
+        )
+        .map_err(|e| format!("Failed to prepare get reminder query: {}", e))?;
+
+    stmt.query_row(params![id], row_to_reminder)
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => format!("Reminder with ID '{}' not found", id),
+            _ => format!("Failed to fetch reminder: {}", e),
+        })
+}
+
+pub fn list_reminders_for_task(conn: &Connection, task_id: &str) -> Result<Vec<Reminder>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, task_id, remind_at, delivered_at, dismissed_at, created_at
+             FROM reminders WHERE task_id = ?1 ORDER BY remind_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare list reminders query: {}", e))?;
+
+    let rows = stmt
+        .query_map(params![task_id], row_to_reminder)
+        .map_err(|e| format!("Failed to query reminders: {}", e))?;
+
+    let mut reminders = Vec::new();
+    for r in rows {
+        reminders.push(r.map_err(|e| format!("Failed to read reminder row: {}", e))?);
+    }
+
+    Ok(reminders)
+}
+
+pub fn delete_reminder(conn: &Connection, id: &str) -> Result<(), String> {
+    let rows_affected = conn
+        .execute("DELETE FROM reminders WHERE id = ?1", params![id])
+        .map_err(|e| format!("Failed to delete reminder: {}", e))?;
+
+    if rows_affected == 0 {
+        return Err(format!("Reminder with ID '{}' not found", id));
+    }
+
+    Ok(())
+}
+
+pub fn dismiss_reminder(conn: &Connection, id: &str) -> Result<(), String> {
+    let now = Utc::now().to_rfc3339();
+    let rows_affected = conn
+        .execute(
+            "UPDATE reminders SET dismissed_at = ?1 WHERE id = ?2",
+            params![&now, id],
+        )
+        .map_err(|e| format!("Failed to dismiss reminder: {}", e))?;
+
+    if rows_affected == 0 {
+        return Err(format!("Reminder with ID '{}' not found", id));
+    }
+
+    Ok(())
+}
+
+pub fn mark_reminder_delivered_atomic(
+    conn: &Connection,
+    id: &str,
+    delivered_at: &str,
+) -> Result<bool, String> {
+    let rows_affected = conn
+        .execute(
+            "UPDATE reminders SET delivered_at = ?1 WHERE id = ?2 AND delivered_at IS NULL",
+            params![delivered_at, id],
+        )
+        .map_err(|e| format!("Failed to atomically mark reminder delivered: {}", e))?;
+
+    Ok(rows_affected == 1)
+}
+
+pub fn get_due_undelivered_reminders(
+    conn: &Connection,
+    as_of: &str,
+) -> Result<Vec<DueReminder>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT r.id, r.task_id, t.title, t.priority, r.remind_at
+             FROM reminders r
+             INNER JOIN tasks t ON r.task_id = t.id
+             WHERE r.remind_at <= ?1
+               AND r.delivered_at IS NULL
+               AND r.dismissed_at IS NULL
+               AND t.status NOT IN ('completed', 'archived')
+             ORDER BY r.remind_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare get due reminders query: {}", e))?;
+
+    let rows = stmt
+        .query_map(params![as_of], |row| {
+            Ok(DueReminder {
+                id: row.get(0)?,
+                task_id: row.get(1)?,
+                task_title: row.get(2)?,
+                task_priority: row.get(3)?,
+                remind_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| format!("Failed to query due reminders: {}", e))?;
+
+    let mut due = Vec::new();
+    for r in rows {
+        due.push(r.map_err(|e| format!("Failed to read due reminder row: {}", e))?);
+    }
+
+    Ok(due)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1195,5 +1353,70 @@ mod tests {
         assert_eq!(next_task.due_at.as_deref(), Some("2026-11-25T09:30"));
         assert_eq!(next_task.recurrence_rule.as_deref(), Some("daily"));
         assert_eq!(next_task.recurrence_series_id.as_deref(), Some(series_id.as_str()));
+    }
+
+    #[test]
+    fn test_reminder_lifecycle_and_duplicate_protection() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let task = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Prepare presentation".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Urgent),
+                due_at: Some("2026-11-25T14:00".to_string()),
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .expect("create task");
+
+        // Schedule reminder for 2026-11-25T13:30
+        let reminder = create_reminder(
+            &conn,
+            CreateReminderInput {
+                task_id: task.id.clone(),
+                remind_at: "2026-11-25T13:30".to_string(),
+            },
+        )
+        .expect("create reminder");
+
+        assert_eq!(reminder.task_id, task.id);
+        assert_eq!(reminder.remind_at, "2026-11-25T13:30");
+        assert!(reminder.delivered_at.is_none());
+        assert!(reminder.dismissed_at.is_none());
+
+        // List reminders for task
+        let reminders = list_reminders_for_task(&conn, &task.id).expect("list reminders");
+        assert_eq!(reminders.len(), 1);
+
+        // Undelivered check prior to remind_at -> empty
+        let due_before = get_due_undelivered_reminders(&conn, "2026-11-25T13:00").expect("due before");
+        assert_eq!(due_before.len(), 0);
+
+        // Undelivered check at or after remind_at -> 1 due reminder
+        let due_after = get_due_undelivered_reminders(&conn, "2026-11-25T13:30").expect("due after");
+        assert_eq!(due_after.len(), 1);
+        assert_eq!(due_after[0].task_title, "Prepare presentation");
+
+        // Duplicate dispatch protection test:
+        // First atomic mark succeeds
+        let won_first = mark_reminder_delivered_atomic(&conn, &reminder.id, "2026-11-25T13:30:01").expect("mark 1");
+        assert!(won_first, "First delivery attempt should win");
+
+        // Second atomic mark fails because delivered_at is no longer NULL
+        let won_second = mark_reminder_delivered_atomic(&conn, &reminder.id, "2026-11-25T13:30:02").expect("mark 2");
+        assert!(!won_second, "Second delivery attempt must fail to prevent duplicates");
+
+        // Subsequent check returns 0 because reminder is now marked delivered
+        let due_now = get_due_undelivered_reminders(&conn, "2026-11-25T13:35").expect("due now");
+        assert_eq!(due_now.len(), 0);
+
+        // Test cascade deletion: deleting task removes reminders
+        delete_task(&conn, &task.id).expect("delete task");
+        let reminders_after_del = list_reminders_for_task(&conn, &task.id).expect("list reminders");
+        assert_eq!(reminders_after_del.len(), 0);
     }
 }

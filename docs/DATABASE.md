@@ -106,3 +106,31 @@ CREATE INDEX IF NOT EXISTS idx_activity_time ON activity_logs(occurred_at);
 - **Tasks ↔ Categories:** `category_id REFERENCES categories(id) ON DELETE SET NULL`. Deleting a category preserves all tasks with the category removed.
 - **Reminders ↔ Tasks:** `task_id REFERENCES tasks(id) ON DELETE CASCADE`. Deleting a task automatically cleans up its pending reminders.
 
+---
+
+## 5. Reminder Delivery & Concurrency Lifecycle
+
+Reminders are evaluated by a background scheduler thread running on a 15-second loop:
+
+1. **Due Query:**
+   ```sql
+   SELECT r.id, r.task_id, t.title, t.priority, r.remind_at
+   FROM reminders r
+   INNER JOIN tasks t ON r.task_id = t.id
+   WHERE r.delivered_at IS NULL
+     AND r.remind_at <= ?1
+     AND t.status != 'completed'
+     AND t.status != 'archived'
+   ORDER BY r.remind_at ASC;
+   ```
+2. **Atomic Dispatch Slot Acquisition:**
+   To guarantee that notifications are never delivered twice even across multiple ticks or concurrent operations:
+   ```sql
+   UPDATE reminders
+   SET delivered_at = ?1
+   WHERE id = ?2 AND delivered_at IS NULL;
+   ```
+   If the affected rows count is `1`, the slot was won and native dispatch occurs; otherwise the tick safely skips.
+3. **Missed-Reminder Catch-Up:**
+   Because the due query searches for any undelivered reminder where `remind_at <= CURRENT_TIMESTAMP`, any notifications that occurred while the computer was in sleep mode or while the application was closed are immediately surfaced upon restart.
+

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -35,6 +36,13 @@ export interface DateTimePickerProps {
   direction?: "down" | "up" | "auto";
 }
 
+interface PopoverCoords {
+  top: number;
+  left: number;
+  maxHeight: number;
+  width: number;
+}
+
 const toLocalIso = (d: Date): string => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -50,9 +58,9 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   direction = "auto",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpwards, setOpenUpwards] = useState(false);
-  const [alignRight, setAlignRight] = useState(false);
+  const [coords, setCoords] = useState<PopoverCoords | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   // Parse current selected date
   const currentDate = useMemo(() => {
@@ -71,58 +79,110 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     }
   }, [currentDate]);
 
-  const checkPlacement = () => {
+  // Compute dynamic floating coordinates clamped to viewport boundaries
+  const updateCoords = useCallback(() => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const POPOVER_HEIGHT = 285;
     const POPOVER_WIDTH = 280;
+    const POPOVER_HEIGHT = 285;
+    const PADDING = 8;
 
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
 
-    // Strongly prefer opening downwards.
-    // Only open upward if explicitly requested, or if space below is genuinely cramped (< 180px)
-    // AND space above can comfortably fit the popover without clipping the top of the window.
+    // Horizontal placement:
+    // Default to aligning right edge of popover with right edge of trigger input
+    let left = rect.right - POPOVER_WIDTH;
+    if (align === "left") {
+      left = rect.left;
+    }
+    // Clamp horizontally within viewport margins
+    left = Math.max(PADDING, Math.min(left, viewportWidth - POPOVER_WIDTH - PADDING));
+
+    // Vertical placement:
+    const spaceBelow = viewportHeight - rect.bottom - PADDING;
+    const spaceAbove = rect.top - PADDING;
+
+    let top = rect.bottom + 4; // default: immediately below trigger
+
     if (direction === "up") {
-      setOpenUpwards(true);
+      top = rect.top - POPOVER_HEIGHT - 4;
     } else if (direction === "down") {
-      setOpenUpwards(false);
+      top = rect.bottom + 4;
     } else {
-      if (spaceBelow < 180 && spaceAbove >= POPOVER_HEIGHT + 20) {
-        setOpenUpwards(true);
+      // Dynamic auto-placement:
+      if (spaceBelow >= POPOVER_HEIGHT) {
+        // Comfortably fits below
+        top = rect.bottom + 4;
+      } else if (spaceAbove >= POPOVER_HEIGHT) {
+        // Fits above without clipping
+        top = rect.top - POPOVER_HEIGHT - 4;
       } else {
-        setOpenUpwards(false);
+        // Tight space on both sides (high zoom level or short viewport):
+        if (spaceBelow >= spaceAbove) {
+          top = Math.max(PADDING, Math.min(rect.bottom + 4, viewportHeight - POPOVER_HEIGHT - PADDING));
+        } else {
+          top = Math.max(PADDING, Math.min(rect.top - POPOVER_HEIGHT - 4, viewportHeight - POPOVER_HEIGHT - PADDING));
+        }
       }
     }
 
-    if (align === "right") {
-      setAlignRight(true);
-    } else if (align === "left") {
-      setAlignRight(false);
-    } else {
-      const overflowsRight = rect.left + POPOVER_WIDTH > window.innerWidth - 12;
-      setAlignRight(overflowsRight);
+    // Safety clamping:
+    // 1. Top must never be less than PADDING
+    top = Math.max(PADDING, top);
+
+    // 2. If bottom still overflows viewport, shift top upward
+    if (top + POPOVER_HEIGHT > viewportHeight - PADDING) {
+      top = Math.max(PADDING, viewportHeight - POPOVER_HEIGHT - PADDING);
     }
-  };
+
+    // 3. Max allowable height so it NEVER exceeds the screen
+    const maxHeight = Math.max(160, viewportHeight - top - PADDING);
+
+    setCoords({
+      top,
+      left,
+      maxHeight,
+      width: POPOVER_WIDTH,
+    });
+  }, [align, direction]);
 
   const toggleOpen = () => {
     if (disabled) return;
     if (!isOpen) {
-      checkPlacement();
+      updateCoords();
       setIsOpen(true);
     } else {
       setIsOpen(false);
     }
   };
 
+  // Re-calculate coordinates on resize, zoom changes, and scroll
+  useEffect(() => {
+    if (!isOpen) return;
+    updateCoords();
+
+    const handleResizeOrScroll = () => {
+      updateCoords();
+    };
+
+    window.addEventListener("resize", handleResizeOrScroll);
+    window.addEventListener("scroll", handleResizeOrScroll, true);
+
+    return () => {
+      window.removeEventListener("resize", handleResizeOrScroll);
+      window.removeEventListener("scroll", handleResizeOrScroll, true);
+    };
+  }, [isOpen, updateCoords]);
+
   // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const inContainer = containerRef.current && containerRef.current.contains(target);
+      const inPopover = popoverRef.current && popoverRef.current.contains(target);
+      if (!inContainer && !inPopover) {
         setIsOpen(false);
       }
     };
@@ -200,6 +260,16 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const ampm = currentHours >= 12 ? "PM" : "AM";
   const displayHours12 = currentHours % 12 === 0 ? 12 : currentHours % 12;
 
+  // Local text input state allowing empty / intermediate states while typing
+  const [hourInput, setHourInput] = useState<string>(() => String(displayHours12));
+  const [minuteInput, setMinuteInput] = useState<string>(() => String(currentMinutes).padStart(2, "0"));
+
+  // Keep local text inputs in sync with external date/preset changes
+  useEffect(() => {
+    setHourInput(String(displayHours12));
+    setMinuteInput(String(currentMinutes).padStart(2, "0"));
+  }, [displayHours12, currentMinutes]);
+
   const handleTimePreset = (h24: number, m: number) => {
     const base = currentDate ? new Date(currentDate) : new Date();
     base.setHours(h24, m, 0, 0);
@@ -214,11 +284,57 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     onChange(toLocalIso(base));
   };
 
+  const handleHourInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+    setHourInput(digits);
+    if (digits) {
+      const val = parseInt(digits, 10);
+      if (val >= 1 && val <= 12) {
+        handleHourChange(val);
+      }
+    }
+  };
+
+  const handleHourInputBlur = () => {
+    if (!hourInput) {
+      setHourInput(String(displayHours12));
+    } else {
+      let val = parseInt(hourInput, 10);
+      if (isNaN(val) || val < 1) val = 1;
+      if (val > 12) val = 12;
+      setHourInput(String(val));
+      handleHourChange(val);
+    }
+  };
+
   const handleMinuteChange = (newM: number) => {
     const validM = Math.max(0, Math.min(59, isNaN(newM) ? 0 : newM));
     const base = currentDate ? new Date(currentDate) : new Date();
     base.setHours(currentHours, validM, 0, 0);
     onChange(toLocalIso(base));
+  };
+
+  const handleMinuteInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+    setMinuteInput(digits);
+    if (digits) {
+      const val = parseInt(digits, 10);
+      if (val >= 0 && val <= 59) {
+        handleMinuteChange(val);
+      }
+    }
+  };
+
+  const handleMinuteInputBlur = () => {
+    if (!minuteInput) {
+      setMinuteInput(String(currentMinutes).padStart(2, "0"));
+    } else {
+      let val = parseInt(minuteInput, 10);
+      if (isNaN(val) || val < 0) val = 0;
+      if (val > 59) val = 59;
+      setMinuteInput(String(val).padStart(2, "0"));
+      handleMinuteChange(val);
+    }
   };
 
   const handleAmPmToggle = (targetPeriod: "AM" | "PM") => {
@@ -305,12 +421,18 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
         </div>
       </div>
 
-      {/* Popover Dropdown */}
-      {isOpen && (
+      {/* Viewport-Clamped Floating Popover (Portaled to document.body) */}
+      {isOpen && coords && typeof document !== "undefined" && createPortal(
         <div
-          className={`absolute z-50 p-2.5 bg-dm-surface border border-dm-border rounded-[8px] shadow-2xl text-dm-text-primary w-[280px] animate-in fade-in zoom-in-95 duration-100 ${
-            openUpwards ? "bottom-full mb-1.5" : "top-full mt-1.5"
-          } ${alignRight ? "right-0" : "left-0"}`}
+          ref={popoverRef}
+          style={{
+            position: "fixed",
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            width: `${coords.width}px`,
+            maxHeight: `${coords.maxHeight}px`,
+          }}
+          className="z-[9999] p-2.5 bg-dm-surface border border-dm-border rounded-[8px] shadow-2xl text-dm-text-primary overflow-y-auto animate-in fade-in zoom-in-95 duration-100 select-none"
         >
           {/* Quick Shortcuts */}
           <div className="grid grid-cols-4 gap-1 pb-2 mb-2 border-b border-dm-border">
@@ -456,27 +578,62 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               <div className="flex items-center gap-1 bg-dm-bg px-1.5 py-0.5 rounded-[4px] border border-dm-border">
                 {/* Hour */}
                 <input
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={displayHours12}
-                  onChange={(e) => handleHourChange(parseInt(e.target.value, 10))}
-                  className="w-7 text-center font-mono text-[11px] bg-dm-surface border border-dm-border rounded-[3px] py-0.5 text-dm-text-primary focus:outline-none focus:border-dm-accent"
-                  title="Hour (1-12)"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={hourInput}
+                  placeholder="12"
+                  onFocus={(e) => e.target.select()}
+                  onChange={handleHourInputChange}
+                  onBlur={handleHourInputBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const next = displayHours12 >= 12 ? 1 : displayHours12 + 1;
+                      setHourInput(String(next));
+                      handleHourChange(next);
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const next = displayHours12 <= 1 ? 12 : displayHours12 - 1;
+                      setHourInput(String(next));
+                      handleHourChange(next);
+                    } else if (e.key === "Enter") {
+                      handleHourInputBlur();
+                    }
+                  }}
+                  className="w-7 text-center font-mono text-[11px] bg-dm-surface border border-dm-border rounded-[3px] py-0.5 text-dm-text-primary placeholder:text-dm-text-secondary/40 focus:outline-none focus:border-dm-accent"
+                  title="Hour (1-12) · Up/Down arrow to step"
                 />
 
                 <span className="font-mono text-xs text-dm-text-secondary font-bold">:</span>
 
                 {/* Minute */}
                 <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  step={5}
-                  value={String(currentMinutes).padStart(2, "0")}
-                  onChange={(e) => handleMinuteChange(parseInt(e.target.value, 10))}
-                  className="w-7 text-center font-mono text-[11px] bg-dm-surface border border-dm-border rounded-[3px] py-0.5 text-dm-text-primary focus:outline-none focus:border-dm-accent"
-                  title="Minute (0-59)"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={minuteInput}
+                  placeholder="00"
+                  onFocus={(e) => e.target.select()}
+                  onChange={handleMinuteInputChange}
+                  onBlur={handleMinuteInputBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const next = currentMinutes >= 55 ? 0 : currentMinutes + 5;
+                      setMinuteInput(String(next).padStart(2, "0"));
+                      handleMinuteChange(next);
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const next = currentMinutes <= 0 ? 55 : currentMinutes - 5;
+                      setMinuteInput(String(next).padStart(2, "0"));
+                      handleMinuteChange(next);
+                    } else if (e.key === "Enter") {
+                      handleMinuteInputBlur();
+                    }
+                  }}
+                  className="w-7 text-center font-mono text-[11px] bg-dm-surface border border-dm-border rounded-[3px] py-0.5 text-dm-text-primary placeholder:text-dm-text-secondary/40 focus:outline-none focus:border-dm-accent"
+                  title="Minute (0-59) · Up/Down arrow to step"
                 />
 
                 {/* AM / PM Segmented Control */}
@@ -526,7 +683,8 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

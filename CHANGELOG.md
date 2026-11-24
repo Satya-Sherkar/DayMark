@@ -50,7 +50,8 @@ All notable changes to Daymark are documented in this file.
 - **Visual Design System (Swiss Editorial + Obsidian Workshop):**
   - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
   - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.
-  - Replaced native browser date/time inputs with custom `DateTimePicker` component featuring quick date presets (Today, Tomorrow, Weekend, Next Week), month navigation, editorial calendar grid, quick time presets (9 AM, 12 PM, 5 PM, 8 PM), fine-grained hour/minute steppers, and AM/PM segmented controls with downward-preferred positioning and viewport-safe boundary clamping.
+  - Replaced native browser date/time inputs with custom `DateTimePicker` component featuring quick date presets (Today, Tomorrow, Weekend, Next Week), month navigation, editorial calendar grid, quick time presets (9 AM, 12 PM, 5 PM, 8 PM), fine-grained hour/minute steppers, and AM/PM segmented controls.
+  - Implemented dynamic React Portal viewport positioning with real-time coordinate recalculation on window resize, scroll, and zoom (`Ctrl +` / `Ctrl -`), guaranteeing popovers never overflow screen boundaries or clip at any zoom level.
   - Redesigned collapsible sidebar, compact aligned header, flat task rows with custom checkboxes, and modal dialogs with 4px–8px radii.
   - Replaced generic metric cards with a unified editorial statistics grid.
 - **Documentation:**

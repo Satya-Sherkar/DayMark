@@ -381,7 +381,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 onChange={setDueAt}
                 placeholder="Set due date & time..."
                 align="right"
-                direction="down"
+                direction="auto"
               />
             </div>
           </div>

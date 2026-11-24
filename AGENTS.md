@@ -21,6 +21,7 @@ This document outlines persistent constraints and practices for coding agents wo
 - **Lock Management:** Keep `Mutex<Connection>` lock scopes minimal. Never hold a database lock across asynchronous OS calls or long UI tasks.
 - **Frontend State:** UI state is a reflection of the SQLite source of truth. Always re-fetch or cleanly invalidate after mutations.
 - **Tooling Awareness:** Check for installed tools before attempting re-installation. Run unit tests (`cargo test`) and typechecks (`tsc --noEmit`) before completing any phase.
+- **Phase Documentation Updates:** After implementing each phase, update all related documentation across the project (including `docs/ROADMAP.md`, `CHANGELOG.md`, `README.md`, and domain docs such as `docs/ARCHITECTURE.md` or `docs/DATABASE.md` as applicable) to reflect the newly completed capabilities, schema updates, and progress status.
 
 ---
 

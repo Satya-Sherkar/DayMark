@@ -1,4 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#C64D38"/>
-  <path d="M10 8H16.5C20.0899 8 23 10.9101 23 14.5C23 18.0899 20.0899 21 16.5 21H13.5V24H10V8ZM13.5 11.5V17.5H16.5C18.1569 17.5 19.5 16.1569 19.5 14.5C19.5 12.8431 18.1569 11.5 16.5 11.5H13.5Z" fill="white"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Daymark app icon</title>
+  <desc id="desc">Warm ivory rounded square with a bold two-tone terracotta checkmark.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#F3F0E9"/>
+  <path d="M300 523 L426 649 Q447 670 469 646 L765 333 Q788 309 813 333 L852 371 Q876 394 853 419 L493 800 Q448 848 400 800 L190 590 Q166 566 190 542 L253 480 Q277 457 300 480 Z" fill="#C64D38"/>
+  <path d="M300 523 L253 480 Q277 457 300 480 L443 622 L400 667 Z" fill="#A93B2B"/>
 </svg>

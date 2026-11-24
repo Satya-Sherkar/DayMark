@@ -99,9 +99,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* App Branding */}
         <div className="h-14 px-4 flex items-center justify-between border-b border-dm-border shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-6 h-6 rounded-[4px] bg-dm-accent text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
-              D
-            </div>
+            <img
+              src="/icon.svg"
+              alt="Daymark"
+              className="w-6 h-6 rounded-[5px] shrink-0 object-contain shadow-xs"
+            />
             {!isCollapsed && (
               <div className="overflow-hidden">
                 <h1 className="font-heading text-sm font-bold text-dm-text-primary tracking-tight leading-none">

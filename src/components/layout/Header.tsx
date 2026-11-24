@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Search, PanelLeft } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 interface HeaderProps {
   title: string;
@@ -16,22 +16,11 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   searchQuery,
   onSearchChange,
-  onOpenQuickAdd,
-  isSidebarCollapsed,
-  onToggleSidebar,
+  onOpenQuickAdd
 }) => {
   return (
     <header className="h-14 px-6 border-b border-dm-border bg-dm-bg flex items-center justify-between gap-4 select-none shrink-0">
       <div className="flex items-center gap-3">
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="p-1.5 rounded-[6px] text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-surface border border-transparent hover:border-dm-border transition-colors cursor-pointer"
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
-        )}
         <div>
           <h2 className="font-heading text-sm font-bold text-dm-text-primary tracking-tight leading-none">
             {title}

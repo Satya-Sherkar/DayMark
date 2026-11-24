@@ -3,6 +3,44 @@ use tauri::{AppHandle, State};
 use tauri_plugin_autostart::ManagerExt;
 use crate::state::AppState;
 
+pub fn sanitize_linux_autostart_desktop_file() {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(home) = std::env::var("HOME") {
+            let autostart_file = std::path::PathBuf::from(home)
+                .join(".config")
+                .join("autostart")
+                .join("Daymark.desktop");
+            if autostart_file.exists() {
+                if let Ok(content) = std::fs::read_to_string(&autostart_file) {
+                    let target_exec = if std::path::Path::new("/usr/bin/daymark").exists() {
+                        "/usr/bin/daymark --autostart".to_string()
+                    } else if let Ok(exe) = std::env::current_exe() {
+                        format!("{} --autostart", exe.to_string_lossy())
+                    } else {
+                        "daymark --autostart".to_string()
+                    };
+
+                    if content.contains("/target/debug/")
+                        || (std::path::Path::new("/usr/bin/daymark").exists()
+                            && content.contains("/target/release/"))
+                    {
+                        let mut new_lines = Vec::new();
+                        for line in content.lines() {
+                            if line.starts_with("Exec=") {
+                                new_lines.push(format!("Exec={}", target_exec));
+                            } else {
+                                new_lines.push(line.to_string());
+                            }
+                        }
+                        let _ = std::fs::write(&autostart_file, new_lines.join("\n") + "\n");
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[tauri::command]
 pub fn is_autostart_enabled(app: AppHandle) -> Result<bool, String> {
     app.autolaunch()
@@ -20,6 +58,7 @@ pub fn set_autostart_enabled(
         app.autolaunch()
             .enable()
             .map_err(|e| format!("Failed to enable autostart: {}", e))?;
+        sanitize_linux_autostart_desktop_file();
     } else {
         app.autolaunch()
             .disable()

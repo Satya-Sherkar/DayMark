@@ -4,7 +4,7 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 pub fn setup_global_shortcut(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
 
-    app.global_shortcut().on_shortcut(shortcut, |app, _shortcut, event| {
+    if let Err(err) = app.global_shortcut().on_shortcut(shortcut, |app, _shortcut, event| {
         if event.state() == ShortcutState::Pressed {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -13,7 +13,12 @@ pub fn setup_global_shortcut(app: &App) -> Result<(), Box<dyn std::error::Error>
                 let _ = window.emit("open-quick-add", ());
             }
         }
-    })?;
+    }) {
+        eprintln!(
+            "Warning: Global shortcut Ctrl+Shift+Space could not be registered: {}",
+            err
+        );
+    }
 
     Ok(())
 }

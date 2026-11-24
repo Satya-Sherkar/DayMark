@@ -44,6 +44,14 @@ pub fn run() {
             tray::setup_tray(app)?;
             shortcuts::setup_global_shortcut(app)?;
 
+            commands::settings::sanitize_linux_autostart_desktop_file();
+
+            if std::env::args().any(|arg| arg == "--autostart") {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.hide();
+                }
+            }
+
             app.manage(app_state);
             Ok(())
         })

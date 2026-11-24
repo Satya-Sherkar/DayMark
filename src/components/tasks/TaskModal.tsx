@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { X } from "lucide-react";
+import {
+  X,
+  MinusCircle,
+  Repeat,
+  CalendarDays,
+  RotateCcw,
+  CalendarRange,
+} from "lucide-react";
 import { CreateTaskInput, Task, TaskPriority, UpdateTaskInput } from "../../types/task";
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
@@ -10,6 +17,7 @@ interface TaskModalProps {
   onClose: () => void;
   onSubmit: (input: CreateTaskInput | UpdateTaskInput) => Promise<void>;
   initialTask?: Task | null;
+  initialDueAt?: string | null;
   projects?: Project[];
   categories?: Category[];
 }
@@ -19,6 +27,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onClose,
   onSubmit,
   initialTask,
+  initialDueAt,
   projects = [],
   categories = [],
 }) => {
@@ -28,8 +37,42 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [dueAt, setDueAt] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [recurrenceRule, setRecurrenceRule] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const recurrenceOptions: SelectOption[] = [
+    {
+      value: "",
+      label: "Does not repeat",
+      icon: <MinusCircle className="w-3.5 h-3.5" />,
+      description: "One-time task without recurrence",
+    },
+    {
+      value: "daily",
+      label: "Daily",
+      icon: <Repeat className="w-3.5 h-3.5" />,
+      description: "Repeats every day at scheduled time",
+    },
+    {
+      value: "weekdays",
+      label: "Weekdays (Mon-Fri)",
+      icon: <CalendarDays className="w-3.5 h-3.5" />,
+      description: "Monday through Friday (skips weekends)",
+    },
+    {
+      value: "weekly",
+      label: "Weekly",
+      icon: <RotateCcw className="w-3.5 h-3.5" />,
+      description: "Repeats once every week on the same day",
+    },
+    {
+      value: "monthly",
+      label: "Monthly",
+      icon: <CalendarRange className="w-3.5 h-3.5" />,
+      description: "Repeats once a month on the same date",
+    },
+  ];
 
   const priorityOptions: SelectOption<TaskPriority>[] = [
     { value: "low", label: "Low", color: "#77746D" },
@@ -71,6 +114,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setPriority(initialTask.priority);
       setProjectId(initialTask.projectId || "");
       setCategoryId(initialTask.categoryId || "");
+      setRecurrenceRule(initialTask.recurrenceRule || "");
       if (initialTask.dueAt) {
         try {
           const date = new Date(initialTask.dueAt);
@@ -88,12 +132,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       setTitle("");
       setDescription("");
       setPriority("medium");
-      setDueAt("");
+      setDueAt(initialDueAt || "");
       setProjectId("");
       setCategoryId("");
+      setRecurrenceRule("");
     }
     setError(null);
-  }, [initialTask, isOpen]);
+  }, [initialTask, initialDueAt, isOpen]);
 
   // Support Esc key to close dialog
   useEffect(() => {
@@ -134,6 +179,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         dueAt: dueAtUtc,
         projectId: projectId ? projectId : null,
         categoryId: categoryId ? categoryId : null,
+        recurrenceRule: recurrenceRule ? recurrenceRule : null,
       });
       onClose();
     } catch (err: unknown) {
@@ -145,7 +191,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs">
-      <div className="bg-dm-surface border border-dm-border rounded-[8px] w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in duration-150">
+      <div className="bg-dm-surface border border-dm-border rounded-[8px] w-full max-w-lg shadow-xl animate-in fade-in duration-150">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-dm-border">
           <h2 className="font-heading text-sm font-bold text-dm-text-primary tracking-tight">
             {initialTask ? "Edit Task" : "New Task"}
@@ -243,6 +289,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 className="w-full"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
+              Recurrence (Optional)
+            </label>
+            <Select
+              value={recurrenceRule}
+              onChange={(val) => setRecurrenceRule(val)}
+              options={recurrenceOptions}
+              direction="auto"
+              className="w-full"
+            />
           </div>
 
           <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-dm-border">

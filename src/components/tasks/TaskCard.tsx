@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, Check, Clock, Edit2, Trash2 } from "lucide-react";
+import { Calendar, Check, Clock, Edit2, Trash2, Repeat } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { Task } from "../../types/task";
 import { Project } from "../../types/project";
@@ -98,6 +98,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             )}
             {project && <ProjectBadge project={project} />}
             {category && <CategoryBadge category={category} />}
+            {task.recurrenceRule && (
+              <span
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-dm-text-secondary bg-dm-surface-hover px-1.5 py-0.5 rounded-[4px] border border-dm-border"
+                title={`Repeats ${task.recurrenceRule}`}
+              >
+                <Repeat className="w-2.5 h-2.5 text-dm-accent" />
+                <span className="capitalize">{task.recurrenceRule}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>

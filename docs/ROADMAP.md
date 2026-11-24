@@ -36,10 +36,11 @@ This roadmap outlines the planned development phases for Daymark.
 
 ---
 
-### [ ] Phase 3 — Calendar & Recurring Tasks
+### [x] Phase 3 — Calendar & Recurring Tasks
 - Interactive Month and Week calendar views with due date indicators.
 - Recurrence rule data model (Daily, Weekly, Monthly, Weekdays).
 - Recurrence generator creating next occurrence upon completion inside a transaction.
+- UI integration with recurrence selectors, recurring badges, and date-prefilled task creation.
 
 ---
 

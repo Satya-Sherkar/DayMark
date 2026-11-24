@@ -66,14 +66,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {format(new Date(), "EEEE, MMMM d, yyyy")} • Local Workspace
           </p>
         </div>
-
-        <button
-          onClick={onOpenQuickAdd}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Quick Task</span>
-        </button>
       </div>
 
       {/* Swiss Editorial Unified Metrics Bar */}

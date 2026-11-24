@@ -69,11 +69,23 @@ pub fn create_task(conn: &Connection, input: CreateTaskInput) -> Result<Task, St
     let status = TaskStatus::Pending;
     let priority = input.priority.unwrap_or(TaskPriority::Medium);
 
+    let trimmed_rule = input
+        .recurrence_rule
+        .as_deref()
+        .map(|r| r.trim().to_string())
+        .filter(|r| !r.is_empty());
+    let series_id = if trimmed_rule.is_some() {
+        Some(id.clone())
+    } else {
+        None
+    };
+
     conn.execute(
         "INSERT INTO tasks (
             id, title, description, status, priority, due_at,
-            project_id, category_id, recurrence_rule, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            project_id, category_id, recurrence_rule, recurrence_series_id,
+            created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             &id,
             trimmed_title,
@@ -83,7 +95,8 @@ pub fn create_task(conn: &Connection, input: CreateTaskInput) -> Result<Task, St
             &input.due_at,
             &input.project_id,
             &input.category_id,
-            &input.recurrence_rule,
+            &trimmed_rule,
+            &series_id,
             &now,
             &now,
         ],
@@ -248,8 +261,14 @@ pub fn update_task(conn: &Connection, id: &str, input: UpdateTaskInput) -> Resul
     };
 
     let new_recurrence = match input.recurrence_rule {
-        Some(opt) => opt,
+        Some(opt) => opt.map(|r| r.trim().to_string()).filter(|r| !r.is_empty()),
         None => existing.recurrence_rule,
+    };
+
+    let new_series_id = if new_recurrence.is_some() {
+        existing.recurrence_series_id.or_else(|| Some(id.to_string()))
+    } else {
+        None
     };
 
     conn.execute(
@@ -262,8 +281,9 @@ pub fn update_task(conn: &Connection, id: &str, input: UpdateTaskInput) -> Resul
             project_id = ?6,
             category_id = ?7,
             recurrence_rule = ?8,
-            updated_at = ?9
-         WHERE id = ?10",
+            recurrence_series_id = ?9,
+            updated_at = ?10
+         WHERE id = ?11",
         params![
             &new_title,
             &new_description,
@@ -273,6 +293,7 @@ pub fn update_task(conn: &Connection, id: &str, input: UpdateTaskInput) -> Resul
             &new_project_id,
             &new_category_id,
             &new_recurrence,
+            &new_series_id,
             &now,
             id,
         ],
@@ -282,8 +303,54 @@ pub fn update_task(conn: &Connection, id: &str, input: UpdateTaskInput) -> Resul
     get_task(conn, id)
 }
 
+pub fn calculate_next_due_date(current_due: Option<&str>, rule: &str) -> Option<String> {
+    use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, NaiveDateTime, Utc, Weekday};
+
+    let rule_lower = rule.trim().to_lowercase();
+    let (base_dt, had_time) = if let Some(due_str) = current_due {
+        if let Ok(dt) = DateTime::parse_from_rfc3339(due_str) {
+            (dt.naive_utc(), true)
+        } else if let Ok(dt) = NaiveDateTime::parse_from_str(due_str, "%Y-%m-%dT%H:%M:%S") {
+            (dt, true)
+        } else if let Ok(dt) = NaiveDateTime::parse_from_str(due_str, "%Y-%m-%dT%H:%M") {
+            (dt, true)
+        } else if let Ok(d) = NaiveDate::parse_from_str(due_str, "%Y-%m-%d") {
+            (d.and_hms_opt(12, 0, 0).unwrap(), false)
+        } else {
+            (Utc::now().naive_utc(), true)
+        }
+    } else {
+        (Utc::now().naive_utc(), true)
+    };
+
+    let next_dt = match rule_lower.as_str() {
+        "daily" => Some(base_dt + Duration::days(1)),
+        "weekly" => Some(base_dt + Duration::weeks(1)),
+        "weekdays" => {
+            let mut candidate = base_dt + Duration::days(1);
+            while candidate.weekday() == Weekday::Sat || candidate.weekday() == Weekday::Sun {
+                candidate = candidate + Duration::days(1);
+            }
+            Some(candidate)
+        }
+        "monthly" => base_dt.checked_add_months(Months::new(1)),
+        _ => None,
+    }?;
+
+    if had_time {
+        Some(next_dt.format("%Y-%m-%dT%H:%M").to_string())
+    } else {
+        Some(next_dt.format("%Y-%m-%d").to_string())
+    }
+}
+
 pub fn complete_task(conn: &Connection, id: &str) -> Result<Task, String> {
     let now = Utc::now().to_rfc3339();
+
+    let task = get_task(conn, id)?;
+    if task.status == TaskStatus::Completed {
+        return Ok(task);
+    }
 
     conn.execute(
         "UPDATE tasks SET
@@ -300,6 +367,43 @@ pub fn complete_task(conn: &Connection, id: &str) -> Result<Task, String> {
          VALUES (?1, ?2, 'completed', NULL, ?3)",
         params![Uuid::new_v4().to_string(), id, &now],
     );
+
+    // If recurring, generate next occurrence
+    if let Some(ref rule) = task.recurrence_rule {
+        let trimmed_rule = rule.trim();
+        if !trimmed_rule.is_empty() {
+            let next_due = calculate_next_due_date(task.due_at.as_deref(), trimmed_rule);
+            let next_id = Uuid::new_v4().to_string();
+            let series_id = task.recurrence_series_id.as_deref().unwrap_or(id);
+
+            let _ = conn.execute(
+                "INSERT INTO tasks (
+                    id, title, description, status, priority, due_at,
+                    project_id, category_id, recurrence_rule, recurrence_series_id,
+                    created_at, updated_at
+                ) VALUES (?1, ?2, ?3, 'pending', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                params![
+                    &next_id,
+                    &task.title,
+                    &task.description,
+                    task.priority.as_str(),
+                    &next_due,
+                    &task.project_id,
+                    &task.category_id,
+                    trimmed_rule,
+                    series_id,
+                    &now,
+                    &now,
+                ],
+            );
+
+            let _ = conn.execute(
+                "INSERT INTO activity_logs (id, task_id, action, metadata_json, occurred_at)
+                 VALUES (?1, ?2, 'created', '{\"recurring\":true}', ?3)",
+                params![Uuid::new_v4().to_string(), &next_id, &now],
+            );
+        }
+    }
 
     get_task(conn, id)
 }
@@ -1025,5 +1129,71 @@ mod tests {
         delete_category(&conn, &category.id).expect("delete category");
         let task_after_cat_del = get_task(&conn, &task1.id).expect("get task after cat del");
         assert!(task_after_cat_del.category_id.is_none());
+    }
+
+    #[test]
+    fn test_recurrence_calculation() {
+        // Daily
+        let next_daily = calculate_next_due_date(Some("2026-11-24T09:00"), "daily");
+        assert_eq!(next_daily.as_deref(), Some("2026-11-25T09:00"));
+
+        // Weekly
+        let next_weekly = calculate_next_due_date(Some("2026-11-24T09:00"), "weekly");
+        assert_eq!(next_weekly.as_deref(), Some("2026-12-01T09:00"));
+
+        // Weekdays: Friday Nov 27, 2026 -> next weekday is Monday Nov 30, 2026
+        let next_weekday = calculate_next_due_date(Some("2026-11-27T09:00"), "weekdays");
+        assert_eq!(next_weekday.as_deref(), Some("2026-11-30T09:00"));
+
+        // Weekdays: Wednesday Nov 25, 2026 -> Thursday Nov 26, 2026
+        let next_weekday_wed = calculate_next_due_date(Some("2026-11-25T09:00"), "weekdays");
+        assert_eq!(next_weekday_wed.as_deref(), Some("2026-11-26T09:00"));
+
+        // Monthly: Nov 24, 2026 -> Dec 24, 2026
+        let next_monthly = calculate_next_due_date(Some("2026-11-24T09:00"), "monthly");
+        assert_eq!(next_monthly.as_deref(), Some("2026-12-24T09:00"));
+
+        // Date without time
+        let next_date_only = calculate_next_due_date(Some("2026-11-24"), "daily");
+        assert_eq!(next_date_only.as_deref(), Some("2026-11-25"));
+    }
+
+    #[test]
+    fn test_recurring_task_completion_creates_next_task() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let recurring_task = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Daily Standup".to_string(),
+                description: Some("Sync with team".to_string()),
+                priority: Some(TaskPriority::High),
+                due_at: Some("2026-11-24T09:30".to_string()),
+                project_id: None,
+                category_id: None,
+                recurrence_rule: Some("daily".to_string()),
+            },
+        )
+        .expect("create recurring task");
+
+        assert_eq!(recurring_task.recurrence_rule.as_deref(), Some("daily"));
+        assert!(recurring_task.recurrence_series_id.is_some());
+        let series_id = recurring_task.recurrence_series_id.clone().unwrap();
+
+        // Complete the task
+        let completed = complete_task(&conn, &recurring_task.id).expect("complete task");
+        assert_eq!(completed.status, TaskStatus::Completed);
+        assert!(completed.completed_at.is_some());
+
+        // Check that a new pending task was created in the series
+        let all_tasks = list_tasks(&conn, TaskFilters::default()).expect("list tasks");
+        assert_eq!(all_tasks.len(), 2);
+
+        let next_task = all_tasks.iter().find(|t| t.id != recurring_task.id).expect("find next task");
+        assert_eq!(next_task.status, TaskStatus::Pending);
+        assert_eq!(next_task.title, "Daily Standup");
+        assert_eq!(next_task.due_at.as_deref(), Some("2026-11-25T09:30"));
+        assert_eq!(next_task.recurrence_rule.as_deref(), Some("daily"));
+        assert_eq!(next_task.recurrence_series_id.as_deref(), Some(series_id.as_str()));
     }
 }

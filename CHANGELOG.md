@@ -30,6 +30,13 @@ All notable changes to Daymark are documented in this file.
   - Added `ProjectBadge` and `CategoryBadge` indicators to task cards.
   - Integrated Project and Category sections into `Sidebar` with quick creation, editing, deletion, and scoping.
   - Added Project and Category dropdown filters and active filter indicators to `TasksPage`.
+- **Phase 3 Calendar & Recurring Tasks:**
+  - Implemented recurrence calculation engine in Rust supporting `daily`, `weekdays`, `weekly`, and `monthly` schedules.
+  - Automated generation of subsequent recurring task instances upon completion inside the database transaction, preserving series linkage via `recurrence_series_id`.
+  - Added backend unit tests (`test_recurrence_calculation`, `test_recurring_task_completion_creates_next_task`).
+  - Added `CalendarPage` featuring interactive Month and Week views with due date indicators, status toggling, and date-prefilled quick add.
+  - Integrated recurrence selection in `TaskModal` and recurrence indicator badges in `TaskCard`.
+  - Added Calendar view to the navigation sidebar and application routing.
 - **Visual Design System (Swiss Editorial + Obsidian Workshop):**
   - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
   - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.

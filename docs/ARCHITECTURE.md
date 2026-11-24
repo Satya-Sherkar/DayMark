@@ -71,6 +71,7 @@ All types use camelCase serialization in JSON to match TypeScript conventions.
 ```typescript
 export type TaskStatus = "pending" | "in_progress" | "completed" | "archived";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type RecurrenceRule = "daily" | "weekdays" | "weekly" | "monthly";
 
 export interface Task {
   id: string;

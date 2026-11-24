@@ -3,6 +3,7 @@ import { Sidebar, NavTab } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TasksPage } from "./pages/TasksPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { TaskModal } from "./components/tasks/TaskModal";
 import { ProjectModal } from "./components/projects/ProjectModal";
 import { CategoryModal } from "./components/categories/CategoryModal";
@@ -40,6 +41,7 @@ export function App() {
   // Modal State for Tasks
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [modalDueAt, setModalDueAt] = useState<string | null>(null);
 
   // Modal State for Projects
   const [isProjectModalOpen, setIsProjectModalOpen] = useState<boolean>(false);
@@ -207,6 +209,8 @@ export function App() {
         return "Dashboard";
       case "tasks":
         return "My Tasks";
+      case "calendar":
+        return "Calendar";
       case "today":
         return "Today's Agenda";
       case "upcoming":
@@ -305,12 +309,29 @@ export function App() {
               onDeleteTask={handleDeleteTask}
               onOpenQuickAdd={() => {
                 setEditingTask(null);
+                setModalDueAt(null);
                 setIsModalOpen(true);
               }}
               onViewAllTasks={() => {
                 setSelectedProjectId(null);
                 setSelectedCategoryId(null);
                 setActiveTab("tasks");
+              }}
+            />
+          ) : activeTab === "calendar" && !selectedProjectId && !selectedCategoryId ? (
+            <CalendarPage
+              tasks={tasks}
+              projects={projects}
+              categories={categories}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={(task) => {
+                setEditingTask(task);
+                setIsModalOpen(true);
+              }}
+              onOpenQuickAdd={(prefilledDueAt) => {
+                setEditingTask(null);
+                setModalDueAt(prefilledDueAt || null);
+                setIsModalOpen(true);
               }}
             />
           ) : (
@@ -328,6 +349,7 @@ export function App() {
               onDeleteTask={handleDeleteTask}
               onOpenQuickAdd={() => {
                 setEditingTask(null);
+                setModalDueAt(null);
                 setIsModalOpen(true);
               }}
               isLoading={isLoading}
@@ -348,9 +370,11 @@ export function App() {
         onClose={() => {
           setIsModalOpen(false);
           setEditingTask(null);
+          setModalDueAt(null);
         }}
         onSubmit={handleModalSubmit}
         initialTask={editingTask}
+        initialDueAt={modalDueAt}
         projects={projects}
         categories={categories}
       />

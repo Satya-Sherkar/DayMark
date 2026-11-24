@@ -72,7 +72,8 @@ DayMark/
 ├── src/                   # React 19 frontend
 │   ├── components/        # Layout, task cards, project/category modals, badges
 │   ├── constants/         # Predefined color palettes
-│   ├── pages/             # Dashboard, My Tasks, Today, Upcoming
+│   ├── hooks/             # Custom hooks (e.g. useZoom)
+│   ├── pages/             # Dashboard, My Tasks, Calendar, Today, Upcoming
 │   ├── services/          # Typed Tauri IPC clients (tasks, projects, categories)
 │   └── types/             # TypeScript domain DTOs
 ├── src-tauri/             # Rust desktop backend

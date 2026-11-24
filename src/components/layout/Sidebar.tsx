@@ -2,6 +2,7 @@ import React from "react";
 import {
   CheckSquare,
   Calendar,
+  CalendarDays,
   Clock,
   LayoutDashboard,
   Moon,
@@ -18,7 +19,7 @@ import {
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
 
-export type NavTab = "dashboard" | "tasks" | "today" | "upcoming";
+export type NavTab = "dashboard" | "tasks" | "calendar" | "today" | "upcoming";
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -64,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: "dashboard" as NavTab, label: "Dashboard", icon: LayoutDashboard },
     { id: "tasks" as NavTab, label: "My Tasks", icon: CheckSquare },
+    { id: "calendar" as NavTab, label: "Calendar", icon: CalendarDays },
     { id: "today" as NavTab, label: "Today", icon: Calendar },
     { id: "upcoming" as NavTab, label: "Upcoming", icon: Clock },
   ];

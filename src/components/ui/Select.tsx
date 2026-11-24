@@ -6,6 +6,8 @@ export interface SelectOption<T extends string = string> {
   label: string;
   color?: string;
   badge?: React.ReactNode;
+  icon?: React.ReactNode;
+  description?: string;
 }
 
 interface SelectProps<T extends string = string> {
@@ -18,6 +20,7 @@ interface SelectProps<T extends string = string> {
   size?: "sm" | "md";
   disabled?: boolean;
   align?: "left" | "right";
+  direction?: "down" | "up" | "auto";
   id?: string;
 }
 
@@ -31,9 +34,11 @@ export function Select<T extends string = string>({
   size = "md",
   disabled = false,
   align = "left",
+  direction = "auto",
   id,
 }: SelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpwards, setOpenUpwards] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
@@ -41,6 +46,30 @@ export function Select<T extends string = string>({
   const selectId = id || generatedId;
 
   const selectedOption = options.find((opt) => opt.value === value);
+
+  const checkDirection = () => {
+    if (direction === "up") {
+      setOpenUpwards(true);
+    } else if (direction === "down") {
+      setOpenUpwards(false);
+    } else if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setOpenUpwards(spaceBelow < 240 && rect.top > spaceBelow);
+    }
+  };
+
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      checkDirection();
+      setIsOpen(true);
+      const idx = options.findIndex((opt) => opt.value === value);
+      setHighlightedIndex(idx >= 0 ? idx : 0);
+    } else {
+      setIsOpen(false);
+    }
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -77,13 +106,15 @@ export function Select<T extends string = string>({
         onChange(options[highlightedIndex].value);
         setIsOpen(false);
       } else {
-        setIsOpen((prev) => !prev);
+        checkDirection();
+        setIsOpen(true);
         const idx = options.findIndex((opt) => opt.value === value);
         setHighlightedIndex(idx >= 0 ? idx : 0);
       }
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (!isOpen) {
+        checkDirection();
         setIsOpen(true);
         const idx = options.findIndex((opt) => opt.value === value);
         setHighlightedIndex(idx >= 0 ? idx : 0);
@@ -95,6 +126,7 @@ export function Select<T extends string = string>({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (!isOpen) {
+        checkDirection();
         setIsOpen(true);
         const idx = options.findIndex((opt) => opt.value === value);
         setHighlightedIndex(idx >= 0 ? idx : options.length - 1);
@@ -121,13 +153,7 @@ export function Select<T extends string = string>({
         type="button"
         id={selectId}
         disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((prev) => !prev);
-            const idx = options.findIndex((opt) => opt.value === value);
-            setHighlightedIndex(idx >= 0 ? idx : 0);
-          }
-        }}
+        onClick={toggleOpen}
         onKeyDown={handleKeyDown}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -142,6 +168,9 @@ export function Select<T extends string = string>({
         } ${triggerClassName}`}
       >
         <span className="flex items-center gap-2 truncate">
+          {selectedOption?.icon && (
+            <span className="shrink-0 text-dm-accent">{selectedOption.icon}</span>
+          )}
           {selectedOption?.color && (
             <span
               className="w-2 h-2 rounded-full shrink-0"
@@ -164,7 +193,9 @@ export function Select<T extends string = string>({
           ref={listboxRef}
           role="listbox"
           tabIndex={-1}
-          className={`absolute ${align === "right" ? "right-0" : "left-0"} mt-1 min-w-full w-max max-w-xs bg-dm-surface border border-dm-border rounded-[6px] shadow-sm z-50 py-1 max-h-56 overflow-y-auto`}
+          className={`absolute ${align === "right" ? "right-0" : "left-0"} ${
+            openUpwards ? "bottom-full mb-1" : "top-full mt-1"
+          } min-w-full w-max max-w-sm bg-dm-surface border border-dm-border rounded-[6px] shadow-md z-50 py-1 max-h-60 overflow-y-auto`}
         >
           {options.length === 0 ? (
             <div className="px-3 py-2 text-xs text-dm-text-secondary italic">
@@ -185,7 +216,7 @@ export function Select<T extends string = string>({
                     setIsOpen(false);
                   }}
                   onMouseEnter={() => setHighlightedIndex(idx)}
-                  className={`px-3 py-1.5 text-xs font-sans flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                  className={`px-3 py-2 text-xs font-sans flex items-center justify-between gap-3 cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-dm-surface-hover font-semibold text-dm-accent"
                       : isHighlighted
@@ -193,17 +224,33 @@ export function Select<T extends string = string>({
                       : "text-dm-text-primary"
                   }`}
                 >
-                  <span className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {opt.icon && (
+                      <span
+                        className={`shrink-0 ${
+                          isSelected ? "text-dm-accent" : "text-dm-text-secondary"
+                        }`}
+                      >
+                        {opt.icon}
+                      </span>
+                    )}
                     {opt.color && (
                       <span
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: opt.color }}
                       />
                     )}
-                    <span className="truncate">{opt.label}</span>
-                  </span>
+                    <div className="truncate flex flex-col text-left">
+                      <span className="truncate font-medium">{opt.label}</span>
+                      {opt.description && (
+                        <span className="text-[10px] font-mono text-dm-text-secondary font-normal truncate mt-0.5">
+                          {opt.description}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {isSelected && (
-                    <Check className="w-3.5 h-3.5 text-dm-accent shrink-0" />
+                    <Check className="w-3.5 h-3.5 text-dm-accent shrink-0 ml-2" />
                   )}
                 </div>
               );

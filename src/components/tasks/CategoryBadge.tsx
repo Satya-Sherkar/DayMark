@@ -20,14 +20,14 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
       onClick={onClick}
       style={{
         borderColor: `${category.color}40`,
-        backgroundColor: `${category.color}15`,
+        backgroundColor: `${category.color}12`,
         color: category.color,
       }}
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-        onClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[11px] font-medium border font-sans ${
+        onClick ? "cursor-pointer hover:opacity-85 transition-opacity" : ""
       } ${className}`}
     >
-      <Tag className="w-2.5 h-2.5" />
+      <Tag className="w-2.5 h-2.5 opacity-70 shrink-0" />
       <span className="truncate max-w-[100px]">{category.name}</span>
     </span>
   );

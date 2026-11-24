@@ -18,7 +18,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [color, setColor] = useState("#2563eb");
+  const [color, setColor] = useState("#C64D38");
   const [archived, setArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,16 +27,25 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     if (initialProject) {
       setName(initialProject.name);
       setDescription(initialProject.description || "");
-      setColor(initialProject.color || "#2563eb");
+      setColor(initialProject.color || "#C64D38");
       setArchived(initialProject.archived);
     } else {
       setName("");
       setDescription("");
-      setColor("#2563eb");
+      setColor("#C64D38");
       setArchived(false);
     }
     setError(null);
   }, [initialProject, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -74,29 +83,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-zinc-800">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-zinc-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-2xs">
+      <div className="bg-dm-surface border border-dm-border rounded-[8px] w-full max-w-md shadow-xl overflow-hidden animate-in fade-in duration-150">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-dm-border">
+          <h2 className="font-heading text-sm font-bold text-dm-text-primary tracking-tight">
             {initialProject ? "Edit Project" : "New Project"}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 p-1 rounded-lg transition-colors"
+            className="text-dm-text-secondary hover:text-dm-text-primary p-1 rounded-[4px] hover:bg-dm-bg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-lg text-xs text-rose-600 dark:text-rose-400">
+            <div className="p-2.5 bg-dm-accent/10 border border-dm-accent/30 rounded-[4px] text-xs font-sans text-dm-accent">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1.5">
+            <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
               Project Name *
             </label>
             <input
@@ -105,29 +114,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Website Redesign, Mobile App"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              placeholder="e.g. Core Engine, Editorial Redesign"
+              className="w-full px-3 py-2 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary placeholder:text-dm-text-secondary text-xs sm:text-sm font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1.5">
+            <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
               Description (Optional)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add purpose or notes..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+              placeholder="Scope or objectives..."
+              className="w-full px-3 py-2 rounded-[6px] border border-dm-border bg-dm-bg text-dm-text-primary placeholder:text-dm-text-secondary text-xs sm:text-sm font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent transition-colors resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
-              Color Theme
+            <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary mb-2">
+              Color Palette
             </label>
-            <div className="grid grid-cols-5 gap-2.5">
+            <div className="grid grid-cols-5 gap-2">
               {PRESET_COLORS.map((c) => {
                 const isSelected = color.toLowerCase() === c.value.toLowerCase();
                 return (
@@ -136,10 +145,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     type="button"
                     onClick={() => setColor(c.value)}
                     title={c.label}
-                    className="h-8 rounded-xl flex items-center justify-center transition-transform hover:scale-105 relative"
+                    className="h-7 rounded-[4px] flex items-center justify-center transition-transform hover:scale-105 cursor-pointer relative border border-black/10 dark:border-white/10"
                     style={{ backgroundColor: c.value }}
                   >
-                    {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                   </button>
                 );
               })}
@@ -147,32 +156,32 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </div>
 
           {initialProject && (
-            <div className="pt-2">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700 dark:text-zinc-300">
+            <div className="pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-sans text-dm-text-secondary">
                 <input
                   type="checkbox"
                   checked={archived}
                   onChange={(e) => setArchived(e.target.checked)}
-                  className="rounded-sm border-slate-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500"
+                  className="rounded-[3px] border-dm-border text-dm-accent focus:ring-dm-accent"
                 />
                 <span>Archive this project</span>
               </label>
             </div>
           )}
 
-          <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-zinc-800">
+          <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-dm-border">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+              className="px-3 py-1.5 text-xs font-sans font-medium text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-bg rounded-[6px] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 rounded-xl shadow-xs transition-colors"
+              className="px-4 py-1.5 text-xs font-sans font-medium text-white bg-dm-accent hover:bg-dm-accent-hover disabled:opacity-50 rounded-[6px] transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-dm-accent/30"
             >
               {isSubmitting ? "Saving..." : initialProject ? "Save Changes" : "Create Project"}
             </button>

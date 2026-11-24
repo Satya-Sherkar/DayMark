@@ -106,3 +106,36 @@ export interface Category {
   updatedAt: string;
 }
 ```
+
+---
+
+## 4. Visual Design System
+
+Daymark follows a hybrid **Swiss Editorial + Obsidian Workshop** aesthetic, prioritizing information hierarchy, restrained typography, and flat surfaces over generic SaaS decorations.
+
+### Theme Tokens
+
+| Token | Light Theme | Dark Theme | Purpose |
+|---|---|---|---|
+| Background | `#F3F0E9` | `#20211F` | Application workspace canvas |
+| Sidebar | `#EAE7DF` | `#252623` | Navigation & sidebar surface |
+| Surface | `#FAF9F5` | `#2B2C29` | Cards, modals, inputs, and rows |
+| Primary Text | `#252522` | `#F0EEE7` | Primary headings and text |
+| Secondary Text | `#77746D` | `#A5A49B` | Labels, subtitles, and descriptions |
+| Accent | `#C64D38` | `#D17B54` | Purposeful interactions, primary CTAs |
+| Border | `#D9D4C9` | `#41413D` | 1px subtle separation lines |
+
+### Typography
+
+- **Manrope (`font-heading`):** Headings, page titles, and branding.
+- **Inter (`font-sans`):** Interface controls, body text, and inputs.
+- **IBM Plex Mono (`font-mono`):** Dates, times, priority labels, metrics, and technical metadata.
+
+### Design Principles
+
+1. **Consistent Desktop Grid:** Aligned horizontal and vertical rhythm suitable for laptop resolutions.
+2. **Flat Surfaces:** 1px borders and subtle tonal differences instead of heavy drop shadows or nested card elevations.
+3. **Corner Radii:** Strictly 4px to 8px (`rounded-[4px]`, `rounded-[6px]`, `rounded-[8px]`).
+4. **Restrained Interaction:** Accent colors reserved exclusively for active states, urgent priorities, and primary action triggers.
+5. **Prohibited Patterns:** No purple/blue SaaS gradients, no excessive glassmorphism, no emoji icons, and no decorative floating blobs.
+

@@ -1,4 +1,5 @@
-import { Filter, Inbox, Plus, X } from "lucide-react";
+import React from "react";
+import { Filter, Plus, X, Inbox } from "lucide-react";
 import { Task } from "../types/task";
 import { Project } from "../types/project";
 import { Category } from "../types/category";
@@ -55,23 +56,31 @@ export const TasksPage: React.FC<TasksPageProps> = ({
     : null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Active Scope / Filter Pill if filtered from sidebar */}
+    <div className="space-y-4 max-w-5xl mx-auto animate-in fade-in duration-150">
+      {/* Active Filter Scope Indicator */}
       {(activeProject || activeCategory) && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 text-xs">
-          <span className="font-semibold text-blue-900 dark:text-blue-300">
-            Active Filter:
+        <div className="flex items-center gap-2 p-2.5 rounded-[6px] bg-dm-surface border border-dm-border text-xs">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-dm-text-secondary">
+            Filter Scope:
           </span>
           {activeProject && (
             <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-white font-medium"
-              style={{ backgroundColor: activeProject.color }}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] font-sans text-xs border"
+              style={{
+                borderColor: `${activeProject.color}45`,
+                backgroundColor: `${activeProject.color}15`,
+                color: activeProject.color,
+              }}
             >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: activeProject.color }}
+              />
               <span>Project: {activeProject.name}</span>
               {onSelectProject && (
                 <button
                   onClick={() => onSelectProject(null)}
-                  className="hover:opacity-75"
+                  className="hover:opacity-75 cursor-pointer ml-1"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -80,14 +89,18 @@ export const TasksPage: React.FC<TasksPageProps> = ({
           )}
           {activeCategory && (
             <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-white font-medium"
-              style={{ backgroundColor: activeCategory.color }}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] font-sans text-xs border"
+              style={{
+                borderColor: `${activeCategory.color}45`,
+                backgroundColor: `${activeCategory.color}15`,
+                color: activeCategory.color,
+              }}
             >
               <span>Category: {activeCategory.name}</span>
               {onSelectCategory && (
                 <button
                   onClick={() => onSelectCategory(null)}
-                  className="hover:opacity-75"
+                  className="hover:opacity-75 cursor-pointer ml-1"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -97,17 +110,18 @@ export const TasksPage: React.FC<TasksPageProps> = ({
         </div>
       )}
 
-      {/* Filter and control bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+      {/* Editorial Filter Strip */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-dm-border">
+        {/* Status Segmented Control */}
+        <div className="inline-flex p-0.5 rounded-[6px] bg-dm-sidebar border border-dm-border self-start">
           {statusTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onStatusFilterChange(tab.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1 rounded-[4px] text-xs font-sans transition-colors cursor-pointer ${
                 statusFilter === tab.id
-                  ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
-                  : "text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                  ? "bg-dm-surface text-dm-text-primary font-semibold border border-dm-border shadow-2xs"
+                  : "text-dm-text-secondary hover:text-dm-text-primary border border-transparent font-medium"
               }`}
             >
               {tab.label}
@@ -115,16 +129,19 @@ export const TasksPage: React.FC<TasksPageProps> = ({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Priority filter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-zinc-400">
-            <Filter className="w-3.5 h-3.5" />
-            <span className="font-medium">Filters:</span>
+        {/* Filters Group */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-dm-text-secondary">
+            <Filter className="w-3 h-3 text-dm-text-secondary shrink-0" />
+            <span className="font-mono text-[10px] uppercase tracking-wider">
+              Filter:
+            </span>
           </div>
+
           <select
             value={priorityFilter}
             onChange={(e) => onPriorityFilterChange(e.target.value)}
-            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
           >
             <option value="all">All Priorities</option>
             <option value="urgent">Urgent</option>
@@ -133,11 +150,10 @@ export const TasksPage: React.FC<TasksPageProps> = ({
             <option value="low">Low</option>
           </select>
 
-          {/* Project filter dropdown */}
           <select
             value={selectedProjectId || ""}
             onChange={(e) => onSelectProject && onSelectProject(e.target.value || null)}
-            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
           >
             <option value="">All Projects</option>
             {projects.map((p) => (
@@ -147,11 +163,10 @@ export const TasksPage: React.FC<TasksPageProps> = ({
             ))}
           </select>
 
-          {/* Category filter dropdown */}
           <select
             value={selectedCategoryId || ""}
             onChange={(e) => onSelectCategory && onSelectCategory(e.target.value || null)}
-            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="px-2.5 py-1 rounded-[6px] border border-dm-border bg-dm-surface text-dm-text-primary text-xs font-sans focus:outline-none focus:border-dm-accent focus:ring-1 focus:ring-dm-accent cursor-pointer"
           >
             <option value="">All Categories</option>
             {categories.map((c) => (
@@ -163,40 +178,40 @@ export const TasksPage: React.FC<TasksPageProps> = ({
 
           <button
             onClick={onOpenQuickAdd}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors ml-auto sm:ml-0"
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium font-sans text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Task</span>
+            <Plus className="w-3 h-3" />
+            <span>Add</span>
           </button>
         </div>
       </div>
 
       {/* Task List Content */}
       {isLoading ? (
-        <div className="p-12 text-center text-slate-400 dark:text-zinc-500 text-sm">
+        <div className="p-12 text-center text-dm-text-secondary font-mono text-xs">
           Loading tasks from local database...
         </div>
       ) : tasks.length === 0 ? (
-        <div className="p-16 text-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
-          <Inbox className="w-10 h-10 mx-auto text-slate-300 dark:text-zinc-600 mb-3" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-zinc-200">
-            No tasks found
+        <div className="p-12 text-center rounded-[6px] border border-dashed border-dm-border bg-dm-surface/30">
+          <Inbox className="w-8 h-8 mx-auto text-dm-text-secondary opacity-40 mb-2" />
+          <h3 className="font-heading text-sm font-semibold text-dm-text-primary">
+            No matching tasks
           </h3>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-xs mx-auto">
+          <p className="font-sans text-xs text-dm-text-secondary mt-1 max-w-sm mx-auto">
             {statusFilter !== "all" || priorityFilter !== "all" || selectedProjectId || selectedCategoryId
-              ? "Try adjusting your filters or search query to find what you're looking for."
-              : "Get started by creating your first task in Daymark."}
+              ? "No tasks match the active filters or search parameters. Try adjusting your filter selection."
+              : "No tasks have been created yet. Add a task to begin tracking your work."}
           </p>
           <button
             onClick={onOpenQuickAdd}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium font-sans text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create Task</span>
+            <span>Create First Task</span>
           </button>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-1.5">
           {tasks.map((task) => {
             const project = projects.find((p) => p.id === task.projectId);
             const category = categories.find((c) => c.id === task.categoryId);

@@ -30,5 +30,10 @@ All notable changes to Daymark are documented in this file.
   - Added `ProjectBadge` and `CategoryBadge` indicators to task cards.
   - Integrated Project and Category sections into `Sidebar` with quick creation, editing, deletion, and scoping.
   - Added Project and Category dropdown filters and active filter indicators to `TasksPage`.
+- **Visual Design System (Swiss Editorial + Obsidian Workshop):**
+  - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
+  - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.
+  - Redesigned collapsible sidebar, compact aligned header, flat task rows with custom checkboxes, and modal dialogs with 4px–8px radii.
+  - Replaced generic metric cards with a unified editorial statistics grid.
 - **Documentation:**
   - Created `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`, and `docs/ROADMAP.md`.

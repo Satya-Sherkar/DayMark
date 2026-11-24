@@ -3,10 +3,9 @@ import { format } from "date-fns";
 import {
   AlertTriangle,
   Calendar,
-  CheckCircle,
   Clock,
-  ListTodo,
   Plus,
+  ArrowRight,
 } from "lucide-react";
 import { DashboardSummary, Task } from "../types/task";
 import { Project } from "../types/project";
@@ -47,124 +46,107 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const overdueTasks = useMemo(() => {
     const now = new Date();
     return tasks.filter(
-      (t) => t.status !== "completed" && t.dueAt && new Date(t.dueAt) < now && !t.dueAt.startsWith(todayIso)
+      (t) =>
+        t.status !== "completed" &&
+        t.dueAt &&
+        new Date(t.dueAt) < now &&
+        !t.dueAt.startsWith(todayIso)
     );
   }, [tasks, todayIso]);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Top Welcome banner */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+      {/* Editorial Welcome Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-4 border-b border-dm-border">
         <div>
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-50 tracking-tight">
-            {greeting}!
+          <h2 className="font-heading text-lg sm:text-xl font-bold text-dm-text-primary tracking-tight">
+            Agenda & Overview
           </h2>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
-            {format(new Date(), "EEEE, MMMM d, yyyy")} • Daymark local workspace
+          <p className="font-mono text-xs text-dm-text-secondary mt-0.5">
+            {format(new Date(), "EEEE, MMMM d, yyyy")} • Local Workspace
           </p>
         </div>
 
         <button
           onClick={onOpenQuickAdd}
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-medium text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add New Task</span>
+          <Plus className="w-3.5 h-3.5" />
+          <span>Quick Task</span>
         </button>
       </div>
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Swiss Editorial Unified Metrics Bar */}
+      <div className="bg-dm-surface border border-dm-border rounded-[6px] grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-dm-border overflow-hidden">
         {/* Total Tasks */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Total Tasks
-            </span>
-            <div className="p-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400">
-              <ListTodo className="w-4 h-4" />
-            </div>
+        <div className="p-4">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary">
+            Total Active
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-zinc-100 mt-3">
+          <div className="font-mono text-2xl font-bold text-dm-text-primary mt-1.5 leading-none">
             {summary ? summary.totalTasks : "—"}
-          </p>
-          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-1">
-            {summary ? `${summary.pendingTasks} pending completion` : "Loading..."}
-          </p>
+          </div>
+          <div className="font-sans text-[11px] text-dm-text-secondary mt-2">
+            {summary ? `${summary.pendingTasks} pending` : "Reading SQLite..."}
+          </div>
         </div>
 
         {/* Due Today */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Due Today
-            </span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-              <Calendar className="w-4 h-4" />
-            </div>
+        <div className="p-4">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary">
+            Due Today
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-zinc-100 mt-3">
+          <div className="font-mono text-2xl font-bold text-dm-text-primary mt-1.5 leading-none">
             {summary ? summary.dueToday : "—"}
-          </p>
-          <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 font-medium">
-            Deadlines for today
-          </p>
+          </div>
+          <div className="font-sans text-[11px] text-dm-text-secondary mt-2">
+            Schedule for today
+          </div>
         </div>
 
         {/* Overdue */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Overdue
-            </span>
-            <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
+        <div className="p-4">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary">
+            Overdue
           </div>
-          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-3">
+          <div
+            className={`font-mono text-2xl font-bold mt-1.5 leading-none ${
+              summary && summary.overdue > 0
+                ? "text-dm-accent"
+                : "text-dm-text-primary"
+            }`}
+          >
             {summary ? summary.overdue : "—"}
-          </p>
-          <p className="text-[11px] text-rose-600/80 dark:text-rose-400/80 mt-1 font-medium">
-            Requires immediate attention
-          </p>
+          </div>
+          <div className="font-sans text-[11px] text-dm-text-secondary mt-2">
+            Requires action
+          </div>
         </div>
 
         {/* Completed Today */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Completed Today
-            </span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="w-4 h-4" />
-            </div>
+        <div className="p-4">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary">
+            Completed Today
           </div>
-          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-3">
+          <div className="font-mono text-2xl font-bold text-dm-text-primary mt-1.5 leading-none">
             {summary ? summary.completedToday : "—"}
-          </p>
-          <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-1 font-medium">
-            Completed in local database
-          </p>
+          </div>
+          <div className="font-sans text-[11px] text-dm-text-secondary mt-2">
+            Logged in database
+          </div>
         </div>
       </div>
 
-      {/* Overdue Alert Section if any */}
+      {/* Overdue Tasks Section */}
       {overdueTasks.length > 0 && (
-        <div className="p-5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-semibold text-sm">
-              <AlertTriangle className="w-4 h-4" />
-              <span>Overdue Tasks ({overdueTasks.length})</span>
-            </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-dm-accent shrink-0" />
+            <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-dm-accent">
+              Overdue Attention ({overdueTasks.length})
+            </h3>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {overdueTasks.map((task) => {
               const project = projects.find((p) => p.id === task.projectId);
               const category = categories.find((c) => c.id === task.categoryId);
@@ -184,38 +166,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       )}
 
-      {/* Tasks Due Today Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
+      {/* Due Today Tasks Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between pb-1">
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-            <h3 className="text-base font-bold text-slate-900 dark:text-zinc-100">
-              Tasks Due Today
+            <Clock className="w-3.5 h-3.5 text-dm-text-secondary shrink-0" />
+            <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-dm-text-primary">
+              Scheduled For Today
             </h3>
+            <span className="font-mono text-[10px] text-dm-text-secondary">
+              ({dueTodayTasks.length})
+            </span>
           </div>
+
           <button
             onClick={onViewAllTasks}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="inline-flex items-center gap-1 font-sans text-xs text-dm-text-secondary hover:text-dm-text-primary hover:underline cursor-pointer"
           >
-            View all tasks →
+            <span>View all tasks</span>
+            <ArrowRight className="w-3 h-3" />
           </button>
         </div>
 
         {dueTodayTasks.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/30">
-            <p className="text-sm font-medium text-slate-600 dark:text-zinc-400">
-              No tasks due today. You're all caught up!
+          <div className="p-8 text-center rounded-[6px] border border-dashed border-dm-border bg-dm-surface/30">
+            <Calendar className="w-6 h-6 mx-auto text-dm-text-secondary opacity-40 mb-2" />
+            <p className="font-sans text-xs text-dm-text-secondary">
+              No tasks scheduled for today.
             </p>
             <button
               onClick={onOpenQuickAdd}
-              className="mt-3 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+              className="mt-2 font-sans text-xs text-dm-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3 h-3" />
               <span>Schedule a task for today</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {dueTodayTasks.map((task) => {
               const project = projects.find((p) => p.id === task.projectId);
               const category = categories.find((c) => c.id === task.categoryId);

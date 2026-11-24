@@ -1,34 +1,28 @@
+import React from "react";
 import { TaskPriority } from "../../types/task";
 
 interface PriorityBadgeProps {
   priority: TaskPriority;
+  className?: string;
 }
 
-export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
-  const styles: Record<TaskPriority, { label: string; bg: string; text: string; border: string }> = {
+export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority, className = "" }) => {
+  const styles: Record<TaskPriority, { label: string; className: string }> = {
     low: {
       label: "Low",
-      bg: "bg-slate-100 dark:bg-slate-800/80",
-      text: "text-slate-600 dark:text-slate-300",
-      border: "border-slate-200 dark:border-slate-700",
+      className: "text-dm-text-secondary border-dm-border bg-dm-surface",
     },
     medium: {
       label: "Medium",
-      bg: "bg-blue-50 dark:bg-blue-950/40",
-      text: "text-blue-700 dark:text-blue-300",
-      border: "border-blue-200 dark:border-blue-800/60",
+      className: "text-dm-text-primary border-dm-border bg-dm-surface",
     },
     high: {
       label: "High",
-      bg: "bg-amber-50 dark:bg-amber-950/40",
-      text: "text-amber-700 dark:text-amber-300",
-      border: "border-amber-200 dark:border-amber-800/60",
+      className: "text-[#B36B42] dark:text-[#D17B54] border-[#B36B42]/30 dark:border-[#D17B54]/30 bg-[#B36B42]/10",
     },
     urgent: {
       label: "Urgent",
-      bg: "bg-rose-50 dark:bg-rose-950/40",
-      text: "text-rose-700 dark:text-rose-300",
-      border: "border-rose-200 dark:border-rose-800/60",
+      className: "text-dm-accent border-dm-accent/40 bg-dm-accent/10 font-semibold",
     },
   };
 
@@ -36,7 +30,7 @@ export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${current.bg} ${current.text} ${current.border}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-mono tracking-wider uppercase border ${current.className} ${className}`}
     >
       {current.label}
     </span>

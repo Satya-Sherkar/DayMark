@@ -3,15 +3,16 @@ export interface ColorOption {
   label: string;
 }
 
+// Swiss Editorial & Obsidian Workshop inspired palette
 export const PRESET_COLORS: ColorOption[] = [
-  { value: "#2563eb", label: "Blue" },
-  { value: "#6366f1", label: "Indigo" },
-  { value: "#8b5cf6", label: "Purple" },
-  { value: "#ec4899", label: "Pink" },
-  { value: "#f43f5e", label: "Rose" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#f59e0b", label: "Amber" },
-  { value: "#10b981", label: "Emerald" },
-  { value: "#06b6d4", label: "Cyan" },
-  { value: "#64748b", label: "Slate" },
+  { value: "#C64D38", label: "Terracotta" },
+  { value: "#B36B42", label: "Rust" },
+  { value: "#C48439", label: "Ochre" },
+  { value: "#4E6E58", label: "Forest" },
+  { value: "#788A72", label: "Sage" },
+  { value: "#5E6E7E", label: "Slate" },
+  { value: "#3F4E68", label: "Ink" },
+  { value: "#85444D", label: "Burgundy" },
+  { value: "#9E8C76", label: "Khaki" },
+  { value: "#5E5F5A", label: "Graphite" },
 ];

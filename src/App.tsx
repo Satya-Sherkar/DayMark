@@ -46,6 +46,9 @@ export function App() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
+  // Sidebar Collapse State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
   // Apply dark class to html document element
   useEffect(() => {
     if (isDark) {
@@ -211,7 +214,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 font-sans antialiased overflow-hidden select-none">
+    <div className="flex h-screen w-screen bg-dm-bg text-dm-text-primary font-sans antialiased overflow-hidden select-none">
       {/* Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
@@ -253,28 +256,32 @@ export function App() {
           setIsCategoryModalOpen(true);
         }}
         onDeleteCategory={handleDeleteCategory}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-dm-bg">
         <Header
           title={getPageTitle()}
-          subtitle="Offline task manager"
+          subtitle="Offline Personal Productivity"
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenQuickAdd={() => {
             setEditingTask(null);
             setIsModalOpen(true);
           }}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
         />
 
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-6 overflow-y-auto bg-dm-bg">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-sm text-rose-700 dark:text-rose-400 flex items-center justify-between">
+            <div className="mb-4 p-3 rounded-[6px] bg-dm-accent/10 border border-dm-accent/30 text-xs font-sans text-dm-accent flex items-center justify-between">
               <span>{error}</span>
               <button
                 onClick={loadData}
-                className="font-semibold underline hover:no-underline ml-4"
+                className="font-semibold underline hover:no-underline ml-4 cursor-pointer"
               >
                 Retry
               </button>

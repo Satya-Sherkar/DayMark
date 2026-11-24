@@ -1,4 +1,5 @@
-import { Calendar, CheckCircle2, Circle, Clock, Edit2, Trash2 } from "lucide-react";
+import React from "react";
+import { Calendar, Check, Clock, Edit2, Trash2 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { Task } from "../../types/task";
 import { Project } from "../../types/project";
@@ -32,7 +33,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   if (task.dueAt) {
     try {
       const parsed = parseISO(task.dueAt);
-      formattedDue = format(parsed, "MMM d, yyyy h:mm a");
+      formattedDue = format(parsed, "MMM d, yyyy HH:mm");
       isOverdue = !isCompleted && isPast(parsed);
     } catch {
       formattedDue = task.dueAt;
@@ -41,32 +42,33 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <div
-      className={`group flex items-start justify-between p-4 rounded-xl border transition-all duration-150 ${
+      className={`group flex items-start justify-between p-3.5 rounded-[6px] border transition-colors ${
         isCompleted
-          ? "bg-slate-50/50 dark:bg-zinc-900/40 border-slate-200 dark:border-zinc-800/60 opacity-75"
-          : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 shadow-xs"
+          ? "bg-dm-surface/50 border-dm-border opacity-65"
+          : "bg-dm-surface border-dm-border hover:border-dm-border-hover"
       }`}
     >
-      <div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
+      <div className="flex items-start gap-3 flex-1 min-w-0 pr-3">
+        {/* Editorial Checkbox */}
         <button
           onClick={() => onToggleComplete(task)}
-          className="mt-0.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-hidden"
+          className={`mt-0.5 w-4 h-4 rounded-[3px] border flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-1 focus:ring-dm-accent ${
+            isCompleted
+              ? "bg-dm-accent border-dm-accent text-white"
+              : "border-dm-border bg-dm-bg hover:border-dm-accent"
+          }`}
           title={isCompleted ? "Mark as pending" : "Mark as completed"}
         >
-          {isCompleted ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 fill-emerald-50 dark:fill-emerald-950" />
-          ) : (
-            <Circle className="w-5 h-5" />
-          )}
+          {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
         </button>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3
-              className={`text-sm font-semibold truncate ${
+              className={`text-xs sm:text-sm font-sans font-medium truncate ${
                 isCompleted
-                  ? "line-through text-slate-500 dark:text-zinc-500"
-                  : "text-slate-900 dark:text-zinc-100"
+                  ? "line-through text-dm-text-secondary"
+                  : "text-dm-text-primary"
               }`}
             >
               {task.title}
@@ -75,22 +77,23 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </div>
 
           {task.description && (
-            <p className="mt-1 text-xs text-slate-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+            <p className="mt-1 text-xs font-sans text-dm-text-secondary line-clamp-2 leading-relaxed">
               {task.description}
             </p>
           )}
 
-          <div className="mt-2.5 flex items-center flex-wrap gap-2 text-xs">
+          <div className="mt-2 flex items-center flex-wrap gap-2 text-xs">
             {formattedDue && (
               <span
-                className={`inline-flex items-center gap-1 font-medium ${
+                className={`inline-flex items-center gap-1 font-mono text-[11px] ${
                   isOverdue
-                    ? "text-rose-600 dark:text-rose-400"
-                    : "text-slate-500 dark:text-zinc-400"
+                    ? "text-dm-accent font-semibold"
+                    : "text-dm-text-secondary"
                 }`}
               >
-                {isOverdue ? <Clock className="w-3.5 h-3.5" /> : <Calendar className="w-3.5 h-3.5" />}
-                {formattedDue} {isOverdue && "(Overdue)"}
+                {isOverdue ? <Clock className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
+                <span>{formattedDue}</span>
+                {isOverdue && <span className="uppercase text-[9px] tracking-wider">(Overdue)</span>}
               </span>
             )}
             {project && <ProjectBadge project={project} />}
@@ -99,20 +102,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         <button
           onClick={() => onEdit(task)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-          title="Edit task"
+          className="p-1 rounded-[4px] text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-bg border border-transparent hover:border-dm-border transition-colors cursor-pointer"
+          title="Edit Task"
         >
-          <Edit2 className="w-4 h-4" />
+          <Edit2 className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onDelete(task.id)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-          title="Delete task"
+          className="p-1 rounded-[4px] text-dm-text-secondary hover:text-dm-accent hover:bg-dm-bg border border-transparent hover:border-dm-border transition-colors cursor-pointer"
+          title="Delete Task"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

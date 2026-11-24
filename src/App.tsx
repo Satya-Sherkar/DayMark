@@ -232,6 +232,18 @@ export function App() {
     }
   };
 
+  const handleSubmitSearch = () => {
+    setActiveTab("tasks");
+    setStatusFilter("all");
+    setPriorityFilter("all");
+    setSelectedProjectId(null);
+    setSelectedCategoryId(null);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
+
   // Project actions
   const handleProjectSubmit = async (input: CreateProjectInput | UpdateProjectInput) => {
     if (editingProject) {
@@ -370,10 +382,20 @@ export function App() {
           subtitle="Offline Personal Productivity"
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onOpenQuickAdd={() => {
-            setEditingTask(null);
+          onOpenQuickAdd={(prefilledTitle) => {
+            setEditingTask(prefilledTitle ? ({ title: prefilledTitle } as Task) : null);
+            setModalDueAt(null);
             setIsModalOpen(true);
           }}
+          onSelectTask={(task) => {
+            setEditingTask(task);
+            setIsModalOpen(true);
+          }}
+          onToggleCompleteTask={handleToggleComplete}
+          onSubmitSearch={handleSubmitSearch}
+          onClearSearch={handleClearSearch}
+          projects={projects}
+          categories={categories}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
         />
@@ -399,6 +421,8 @@ export function App() {
               tasks={tasks}
               projects={projects}
               categories={categories}
+              searchQuery={searchQuery}
+              onClearSearch={handleClearSearch}
               onToggleComplete={handleToggleComplete}
               onEditTask={(task) => {
                 setEditingTask(task);
@@ -457,6 +481,8 @@ export function App() {
               onSelectProject={setSelectedProjectId}
               selectedCategoryId={selectedCategoryId}
               onSelectCategory={setSelectedCategoryId}
+              searchQuery={searchQuery}
+              onClearSearch={handleClearSearch}
             />
           )}
         </main>

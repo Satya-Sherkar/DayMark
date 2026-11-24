@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Filter, Plus, X, Inbox } from "lucide-react";
+import { Filter, Plus, X, Inbox, Search } from "lucide-react";
 import { Task } from "../types/task";
 import { Project } from "../types/project";
 import { Category } from "../types/category";
@@ -23,6 +23,8 @@ interface TasksPageProps {
   onSelectProject?: (id: string | null) => void;
   selectedCategoryId?: string | null;
   onSelectCategory?: (id: string | null) => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export const TasksPage: React.FC<TasksPageProps> = ({
@@ -42,6 +44,8 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   onSelectProject,
   selectedCategoryId = null,
   onSelectCategory,
+  searchQuery,
+  onClearSearch,
 }) => {
   const statusTabs = [
     { id: "all", label: "All Tasks" },
@@ -90,6 +94,30 @@ export const TasksPage: React.FC<TasksPageProps> = ({
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto animate-in fade-in duration-150">
+      {/* Active Search Filter Banner */}
+      {searchQuery && (
+        <div className="flex items-center justify-between p-2.5 rounded-[6px] bg-dm-surface border border-dm-border text-xs">
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-dm-accent shrink-0" />
+            <span className="font-sans font-medium text-dm-text-primary">
+              Search results for &quot;{searchQuery}&quot;
+            </span>
+            <span className="font-mono text-dm-text-secondary text-[11px]">
+              ({tasks.length} {tasks.length === 1 ? "task" : "tasks"} found)
+            </span>
+          </div>
+          {onClearSearch && (
+            <button
+              onClick={onClearSearch}
+              className="inline-flex items-center gap-1 text-xs text-dm-text-secondary hover:text-dm-text-primary hover:underline cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+              <span>Clear search</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Active Filter Scope Indicator */}
       {(activeProject || activeCategory) && (
         <div className="flex items-center gap-2 p-2.5 rounded-[6px] bg-dm-surface border border-dm-border text-xs">
@@ -215,20 +243,32 @@ export const TasksPage: React.FC<TasksPageProps> = ({
         <div className="p-12 text-center rounded-[6px] border border-dashed border-dm-border bg-dm-surface/30">
           <Inbox className="w-8 h-8 mx-auto text-dm-text-secondary opacity-40 mb-2" />
           <h3 className="font-heading text-sm font-semibold text-dm-text-primary">
-            No matching tasks
+            {searchQuery ? `No tasks found matching "${searchQuery}"` : "No matching tasks"}
           </h3>
           <p className="font-sans text-xs text-dm-text-secondary mt-1 max-w-sm mx-auto">
-            {statusFilter !== "all" || priorityFilter !== "all" || selectedProjectId || selectedCategoryId
+            {searchQuery
+              ? "Try adjusting your search query or clear the active filter."
+              : statusFilter !== "all" || priorityFilter !== "all" || selectedProjectId || selectedCategoryId
               ? "No tasks match the active filters or search parameters. Try adjusting your filter selection."
               : "No tasks have been created yet. Add a task to begin tracking your work."}
           </p>
-          <button
-            onClick={onOpenQuickAdd}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium font-sans text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create First Task</span>
-          </button>
+          {searchQuery && onClearSearch ? (
+            <button
+              onClick={onClearSearch}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium font-sans text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Clear Search</span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenQuickAdd}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium font-sans text-white bg-dm-accent hover:bg-dm-accent-hover rounded-[6px] transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create First Task</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-1.5">

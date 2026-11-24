@@ -6,6 +6,8 @@ import {
   Clock,
   Plus,
   ArrowRight,
+  Search,
+  X,
 } from "lucide-react";
 import { DashboardSummary, Task } from "../types/task";
 import { Project } from "../types/project";
@@ -22,6 +24,8 @@ interface DashboardPageProps {
   onViewAllTasks: () => void;
   projects?: Project[];
   categories?: Category[];
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -34,6 +38,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onViewAllTasks,
   projects = [],
   categories = [],
+  searchQuery,
+  onClearSearch,
 }) => {
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -128,6 +134,57 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Prominent Search Results Banner on Dashboard */}
+      {searchQuery && searchQuery.trim().length > 0 && (
+        <div className="space-y-3 p-4 rounded-[6px] border border-dm-accent/30 bg-dm-accent/5 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between pb-1 border-b border-dm-accent/20">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-dm-accent shrink-0" />
+              <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-dm-accent">
+                Search Results ({tasks.length})
+              </h3>
+              <span className="font-mono text-xs text-dm-text-secondary">
+                matching &quot;{searchQuery}&quot;
+              </span>
+            </div>
+            {onClearSearch && (
+              <button
+                type="button"
+                onClick={onClearSearch}
+                className="inline-flex items-center gap-1 font-sans text-xs text-dm-text-secondary hover:text-dm-text-primary hover:underline cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Clear search</span>
+              </button>
+            )}
+          </div>
+
+          {tasks.length === 0 ? (
+            <p className="font-sans text-xs text-dm-text-secondary py-3 text-center">
+              No tasks found matching &quot;{searchQuery}&quot;.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {tasks.map((task) => {
+                const project = projects.find((p) => p.id === task.projectId);
+                const category = categories.find((c) => c.id === task.categoryId);
+                return (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    project={project}
+                    category={category}
+                    onToggleComplete={onToggleComplete}
+                    onEdit={onEditTask}
+                    onDelete={onDeleteTask}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Overdue Tasks Section */}
       {overdueTasks.length > 0 && (

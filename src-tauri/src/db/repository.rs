@@ -1,11 +1,15 @@
-use chrono::Utc;
+use std::collections::HashMap;
+use std::path::Path;
+use chrono::{Datelike, Duration, NaiveDate, Utc};
 use rusqlite::{params, Connection, Row};
 use uuid::Uuid;
 
 use crate::models::{
-    Category, CreateCategoryInput, CreateProjectInput, CreateReminderInput, CreateTaskInput,
-    DashboardSummary, DueReminder, Project, Reminder, Task, TaskFilters, TaskPriority, TaskStatus,
-    UpdateCategoryInput, UpdateProjectInput, UpdateTaskInput,
+    BackupData, Category, CreateCategoryInput, CreateProjectInput, CreateReminderInput,
+    CreateTaskInput, DailyCompletionStat, DashboardSummary, DueReminder, PriorityDistributionStat,
+    Project, ProjectDistributionStat, ProductivityOverview, Reminder, RestoreResult, Task,
+    TaskFilters, TaskPriority, TaskStatus, UpdateCategoryInput, UpdateProjectInput,
+    UpdateTaskInput,
 };
 
 fn row_to_project(row: &Row) -> rusqlite::Result<Project> {
@@ -886,6 +890,518 @@ pub fn get_due_undelivered_reminders(
     Ok(due)
 }
 
+// ==========================================
+// Analytics Repository
+// ==========================================
+
+pub fn get_productivity_overview(conn: &Connection) -> Result<ProductivityOverview, String> {
+    let total_tasks: i64 = conn
+        .query_row("SELECT COUNT(*) FROM tasks", [], |r| r.get(0))
+        .map_err(|e| format!("Failed to count total tasks: {}", e))?;
+
+    let completed_tasks: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tasks WHERE status = 'completed'",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("Failed to count completed tasks: {}", e))?;
+
+    let pending_tasks: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tasks WHERE status = 'pending'",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("Failed to count pending tasks: {}", e))?;
+
+    let completion_rate = if total_tasks > 0 {
+        ((completed_tasks as f64) / (total_tasks as f64) * 1000.0).round() / 10.0
+    } else {
+        0.0
+    };
+
+    let today = Utc::now().date_naive();
+    let yesterday = today - Duration::days(1);
+
+    // Calculate streaks
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT substr(completed_at, 1, 10) as cdate
+             FROM tasks
+             WHERE status = 'completed' AND completed_at IS NOT NULL
+             ORDER BY cdate ASC",
+        )
+        .map_err(|e| format!("Failed to prepare streak query: {}", e))?;
+
+    let date_rows = stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| format!("Failed to query completion dates: {}", e))?;
+
+    let mut dates: Vec<NaiveDate> = Vec::new();
+    for r in date_rows {
+        if let Ok(d_str) = r {
+            if let Ok(nd) = NaiveDate::parse_from_str(&d_str, "%Y-%m-%d") {
+                dates.push(nd);
+            }
+        }
+    }
+    dates.sort();
+    dates.dedup();
+
+    let mut best_streak_days = 0;
+    let mut temp_streak = 0;
+    let mut prev_date: Option<NaiveDate> = None;
+    for d in &dates {
+        if let Some(prev) = prev_date {
+            if *d == prev + Duration::days(1) {
+                temp_streak += 1;
+            } else {
+                temp_streak = 1;
+            }
+        } else {
+            temp_streak = 1;
+        }
+        if temp_streak > best_streak_days {
+            best_streak_days = temp_streak;
+        }
+        prev_date = Some(*d);
+    }
+
+    let mut current_streak_days = 0;
+    if let Some(&latest) = dates.last() {
+        if latest == today || latest == yesterday {
+            let mut check = latest;
+            for d in dates.iter().rev() {
+                if *d == check {
+                    current_streak_days += 1;
+                    check = check - Duration::days(1);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Completions this week (from Monday)
+    let days_from_monday = today.weekday().num_days_from_monday();
+    let monday = today - Duration::days(days_from_monday as i64);
+    let monday_str = format!("{}T00:00:00", monday.format("%Y-%m-%d"));
+
+    let completed_this_week: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at >= ?1",
+            params![&monday_str],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
+    // Completions this month (from 1st of month)
+    let month_start = NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today);
+    let month_start_str = format!("{}T00:00:00", month_start.format("%Y-%m-%d"));
+
+    let completed_this_month: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at >= ?1",
+            params![&month_start_str],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
+    // Daily completions (last 30 days)
+    let start_date = today - Duration::days(29);
+    let start_date_str = format!("{}T00:00:00", start_date.format("%Y-%m-%d"));
+
+    let mut daily_stmt = conn
+        .prepare(
+            "SELECT substr(completed_at, 1, 10) as cdate, COUNT(*)
+             FROM tasks
+             WHERE status = 'completed' AND completed_at >= ?1
+             GROUP BY cdate",
+        )
+        .map_err(|e| format!("Failed to prepare daily completions query: {}", e))?;
+
+    let daily_rows = daily_stmt
+        .query_map(params![&start_date_str], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+        })
+        .map_err(|e| format!("Failed to query daily completions: {}", e))?;
+
+    let mut daily_map: HashMap<String, i64> = HashMap::new();
+    for r in daily_rows {
+        if let Ok((d, count)) = r {
+            daily_map.insert(d, count);
+        }
+    }
+
+    let mut daily_completions = Vec::with_capacity(30);
+    for i in 0..30 {
+        let d = start_date + Duration::days(i);
+        let d_str = d.format("%Y-%m-%d").to_string();
+        let count = daily_map.get(&d_str).copied().unwrap_or(0);
+        daily_completions.push(DailyCompletionStat {
+            date: d_str,
+            completed_count: count,
+        });
+    }
+
+    // Project distribution
+    let mut proj_stmt = conn
+        .prepare(
+            "SELECT
+                p.id,
+                COALESCE(p.name, 'No Project') as name,
+                COALESCE(p.color, '#78716c') as color,
+                COUNT(t.id) as total,
+                SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) as pending
+             FROM tasks t
+             LEFT JOIN projects p ON t.project_id = p.id
+             GROUP BY p.id, p.name, p.color
+             ORDER BY total DESC",
+        )
+        .map_err(|e| format!("Failed to prepare project distribution query: {}", e))?;
+
+    let proj_rows = proj_stmt
+        .query_map([], |row| {
+            Ok(ProjectDistributionStat {
+                project_id: row.get(0)?,
+                project_name: row.get(1)?,
+                project_color: row.get(2)?,
+                total_tasks: row.get(3)?,
+                completed_tasks: row.get(4)?,
+                pending_tasks: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("Failed to query project distribution: {}", e))?;
+
+    let mut project_distribution = Vec::new();
+    for r in proj_rows {
+        project_distribution.push(r.map_err(|e| format!("Failed to read project stat row: {}", e))?);
+    }
+
+    // Priority distribution
+    let mut prio_stmt = conn
+        .prepare(
+            "SELECT
+                priority,
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
+             FROM tasks
+             GROUP BY priority",
+        )
+        .map_err(|e| format!("Failed to prepare priority distribution query: {}", e))?;
+
+    let prio_rows = prio_stmt
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, i64>(3)?,
+            ))
+        })
+        .map_err(|e| format!("Failed to query priority distribution: {}", e))?;
+
+    let mut prio_map: HashMap<String, (i64, i64, i64)> = HashMap::new();
+    for r in prio_rows {
+        if let Ok((prio, total, comp, pend)) = r {
+            prio_map.insert(prio, (total, comp, pend));
+        }
+    }
+
+    let mut priority_distribution = Vec::new();
+    for p in ["urgent", "high", "medium", "low"] {
+        let (tot, comp, pend) = prio_map.get(p).copied().unwrap_or((0, 0, 0));
+        priority_distribution.push(PriorityDistributionStat {
+            priority: p.to_string(),
+            total_tasks: tot,
+            completed_tasks: comp,
+            pending_tasks: pend,
+        });
+    }
+
+    Ok(ProductivityOverview {
+        total_tasks,
+        completed_tasks,
+        pending_tasks,
+        completion_rate,
+        current_streak_days,
+        best_streak_days,
+        completed_this_week,
+        completed_this_month,
+        daily_completions,
+        project_distribution,
+        priority_distribution,
+    })
+}
+
+// ==========================================
+// Backup & Restore Repository
+// ==========================================
+
+pub fn export_backup_data(conn: &Connection, app_version: &str) -> Result<BackupData, String> {
+    // 1. All tasks
+    let mut task_stmt = conn
+        .prepare(
+            "SELECT id, title, description, status, priority, due_at, project_id, category_id,
+                    recurrence_rule, recurrence_series_id, completed_at, created_at, updated_at
+             FROM tasks
+             ORDER BY created_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare tasks export query: {}", e))?;
+
+    let task_rows = task_stmt
+        .query_map([], row_to_task)
+        .map_err(|e| format!("Failed to query tasks: {}", e))?;
+
+    let mut tasks = Vec::new();
+    for t in task_rows {
+        tasks.push(t.map_err(|e| format!("Failed to parse task: {}", e))?);
+    }
+
+    // 2. All projects
+    let mut proj_stmt = conn
+        .prepare(
+            "SELECT id, name, description, color, archived, created_at, updated_at
+             FROM projects
+             ORDER BY created_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare projects export query: {}", e))?;
+
+    let proj_rows = proj_stmt
+        .query_map([], row_to_project)
+        .map_err(|e| format!("Failed to query projects: {}", e))?;
+
+    let mut projects = Vec::new();
+    for p in proj_rows {
+        projects.push(p.map_err(|e| format!("Failed to parse project: {}", e))?);
+    }
+
+    // 3. All categories
+    let mut cat_stmt = conn
+        .prepare(
+            "SELECT id, name, color, created_at, updated_at
+             FROM categories
+             ORDER BY name ASC",
+        )
+        .map_err(|e| format!("Failed to prepare categories export query: {}", e))?;
+
+    let cat_rows = cat_stmt
+        .query_map([], row_to_category)
+        .map_err(|e| format!("Failed to query categories: {}", e))?;
+
+    let mut categories = Vec::new();
+    for c in cat_rows {
+        categories.push(c.map_err(|e| format!("Failed to parse category: {}", e))?);
+    }
+
+    // 4. All reminders
+    let mut rem_stmt = conn
+        .prepare(
+            "SELECT id, task_id, remind_at, delivered_at, dismissed_at, created_at
+             FROM reminders
+             ORDER BY remind_at ASC",
+        )
+        .map_err(|e| format!("Failed to prepare reminders export query: {}", e))?;
+
+    let rem_rows = rem_stmt
+        .query_map([], row_to_reminder)
+        .map_err(|e| format!("Failed to query reminders: {}", e))?;
+
+    let mut reminders = Vec::new();
+    for r in rem_rows {
+        reminders.push(r.map_err(|e| format!("Failed to parse reminder: {}", e))?);
+    }
+
+    // 5. Settings
+    let mut set_stmt = conn
+        .prepare("SELECT key, value FROM settings")
+        .map_err(|e| format!("Failed to prepare settings export query: {}", e))?;
+
+    let set_rows = set_stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|e| format!("Failed to query settings: {}", e))?;
+
+    let mut settings = HashMap::new();
+    for s in set_rows {
+        if let Ok((k, v)) = s {
+            settings.insert(k, v);
+        }
+    }
+
+    Ok(BackupData {
+        version: 1,
+        exported_at: Utc::now().to_rfc3339(),
+        app_version: app_version.to_string(),
+        tasks,
+        projects,
+        categories,
+        reminders,
+        settings,
+    })
+}
+
+pub fn import_backup_data(
+    conn: &mut Connection,
+    data: &BackupData,
+    merge: bool,
+) -> Result<RestoreResult, String> {
+    if data.version < 1 {
+        return Err("Unsupported backup version".to_string());
+    }
+
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("Failed to start transaction: {}", e))?;
+
+    if !merge {
+        tx.execute("DELETE FROM reminders", [])
+            .map_err(|e| format!("Failed to clear reminders: {}", e))?;
+        tx.execute("DELETE FROM activity_logs", [])
+            .map_err(|e| format!("Failed to clear activity logs: {}", e))?;
+        tx.execute("DELETE FROM tasks", [])
+            .map_err(|e| format!("Failed to clear tasks: {}", e))?;
+        tx.execute("DELETE FROM categories", [])
+            .map_err(|e| format!("Failed to clear categories: {}", e))?;
+        tx.execute("DELETE FROM projects", [])
+            .map_err(|e| format!("Failed to clear projects: {}", e))?;
+        tx.execute("DELETE FROM settings", [])
+            .map_err(|e| format!("Failed to clear settings: {}", e))?;
+    }
+
+    // 1. Projects
+    let mut projects_restored = 0;
+    for p in &data.projects {
+        let archived_int = if p.archived { 1 } else { 0 };
+        tx.execute(
+            "INSERT OR REPLACE INTO projects (id, name, description, color, archived, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                &p.id,
+                &p.name,
+                &p.description,
+                &p.color,
+                archived_int,
+                &p.created_at,
+                &p.updated_at,
+            ],
+        )
+        .map_err(|e| format!("Failed to restore project '{}': {}", p.name, e))?;
+        projects_restored += 1;
+    }
+
+    // 2. Categories
+    let mut categories_restored = 0;
+    for c in &data.categories {
+        tx.execute(
+            "INSERT OR REPLACE INTO categories (id, name, color, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![&c.id, &c.name, &c.color, &c.created_at, &c.updated_at],
+        )
+        .map_err(|e| format!("Failed to restore category '{}': {}", c.name, e))?;
+        categories_restored += 1;
+    }
+
+    // 3. Tasks
+    let mut tasks_restored = 0;
+    for t in &data.tasks {
+        let status_str = t.status.as_str();
+        let priority_str = t.priority.as_str();
+        tx.execute(
+            "INSERT OR REPLACE INTO tasks (id, title, description, status, priority, due_at, project_id, category_id,
+                                          recurrence_rule, recurrence_series_id, completed_at, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            params![
+                &t.id,
+                &t.title,
+                &t.description,
+                status_str,
+                priority_str,
+                &t.due_at,
+                &t.project_id,
+                &t.category_id,
+                &t.recurrence_rule,
+                &t.recurrence_series_id,
+                &t.completed_at,
+                &t.created_at,
+                &t.updated_at,
+            ],
+        )
+        .map_err(|e| format!("Failed to restore task '{}': {}", t.title, e))?;
+        tasks_restored += 1;
+    }
+
+    // 4. Reminders
+    let mut reminders_restored = 0;
+    for r in &data.reminders {
+        tx.execute(
+            "INSERT OR REPLACE INTO reminders (id, task_id, remind_at, delivered_at, dismissed_at, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                &r.id,
+                &r.task_id,
+                &r.remind_at,
+                &r.delivered_at,
+                &r.dismissed_at,
+                &r.created_at,
+            ],
+        )
+        .map_err(|e| format!("Failed to restore reminder: {}", e))?;
+        reminders_restored += 1;
+    }
+
+    // 5. Settings
+    let mut settings_restored = 0;
+    let now = Utc::now().to_rfc3339();
+    for (k, v) in &data.settings {
+        tx.execute(
+            "INSERT OR REPLACE INTO settings (key, value, updated_at)
+             VALUES (?1, ?2, ?3)",
+            params![k, v, &now],
+        )
+        .map_err(|e| format!("Failed to restore setting '{}': {}", k, e))?;
+        settings_restored += 1;
+    }
+
+    tx.commit()
+        .map_err(|e| format!("Failed to commit restore transaction: {}", e))?;
+
+    Ok(RestoreResult {
+        tasks_restored,
+        projects_restored,
+        categories_restored,
+        reminders_restored,
+        settings_restored,
+    })
+}
+
+pub fn export_sqlite_snapshot(conn: &Connection, target_path: &Path) -> Result<(), String> {
+    if let Some(parent) = target_path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create snapshot directory: {}", e))?;
+        }
+    }
+
+    if target_path.exists() {
+        std::fs::remove_file(target_path)
+            .map_err(|e| format!("Failed to remove existing file at snapshot path: {}", e))?;
+    }
+
+    let path_str = target_path
+        .to_str()
+        .ok_or_else(|| "Snapshot target path contains invalid UTF-8 characters".to_string())?;
+
+    conn.execute("VACUUM INTO ?1", params![path_str])
+        .map_err(|e| format!("Failed to execute VACUUM INTO: {}", e))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1449,5 +1965,186 @@ mod tests {
             .query_row("SELECT value FROM settings WHERE key = 'autostart_enabled'", [], |r| r.get(0))
             .expect("query updated setting");
         assert_eq!(updated_val, "true");
+    }
+
+    #[test]
+    fn test_productivity_overview() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let project = create_project(
+            &conn,
+            CreateProjectInput {
+                name: "Analytics Test".to_string(),
+                description: None,
+                color: Some("#3b82f6".to_string()),
+            },
+        )
+        .expect("create project");
+
+        let task1 = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Complete Task 1".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Urgent),
+                due_at: None,
+                project_id: Some(project.id.clone()),
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .expect("create task 1");
+
+        let _task2 = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Pending Task 2".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Low),
+                due_at: None,
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .expect("create task 2");
+
+        // Complete task1
+        complete_task(&conn, &task1.id).expect("complete task 1");
+
+        let overview = get_productivity_overview(&conn).expect("get productivity overview");
+        assert_eq!(overview.total_tasks, 2);
+        assert_eq!(overview.completed_tasks, 1);
+        assert_eq!(overview.pending_tasks, 1);
+        assert_eq!(overview.completion_rate, 50.0);
+        assert_eq!(overview.daily_completions.len(), 30);
+        assert_eq!(overview.current_streak_days, 1);
+        assert_eq!(overview.best_streak_days, 1);
+        assert_eq!(overview.completed_this_week, 1);
+        assert_eq!(overview.completed_this_month, 1);
+
+        // Project distribution
+        let proj_stat = overview
+            .project_distribution
+            .iter()
+            .find(|p| p.project_id.as_deref() == Some(&project.id))
+            .expect("find project stat");
+        assert_eq!(proj_stat.total_tasks, 1);
+        assert_eq!(proj_stat.completed_tasks, 1);
+
+        // Priority distribution
+        let urgent_stat = overview
+            .priority_distribution
+            .iter()
+            .find(|p| p.priority == "urgent")
+            .expect("find urgent stat");
+        assert_eq!(urgent_stat.completed_tasks, 1);
+    }
+
+    #[test]
+    fn test_backup_export_and_restore_json() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let proj = create_project(
+            &conn,
+            CreateProjectInput {
+                name: "Backup Proj".to_string(),
+                description: Some("Desc".to_string()),
+                color: Some("#ef4444".to_string()),
+            },
+        )
+        .unwrap();
+
+        let cat = create_category(
+            &conn,
+            CreateCategoryInput {
+                name: "Backup Cat".to_string(),
+                color: Some("#10b981".to_string()),
+            },
+        )
+        .unwrap();
+
+        let task = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Task to backup".to_string(),
+                description: Some("Task desc".to_string()),
+                priority: Some(TaskPriority::High),
+                due_at: Some("2026-11-25T12:00:00Z".to_string()),
+                project_id: Some(proj.id.clone()),
+                category_id: Some(cat.id.clone()),
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+
+        let reminder = create_reminder(
+            &conn,
+            CreateReminderInput {
+                task_id: task.id.clone(),
+                remind_at: "2026-11-25T11:45:00Z".to_string(),
+            },
+        )
+        .unwrap();
+
+        // 1. Export backup data
+        let backup = export_backup_data(&conn, "0.1.0").expect("export backup");
+        assert_eq!(backup.tasks.len(), 1);
+        assert_eq!(backup.projects.len(), 1);
+        assert_eq!(backup.categories.len(), 1);
+        assert_eq!(backup.reminders.len(), 1);
+
+        // 2. Clear database or create new in-memory db
+        let mut new_conn = init_in_memory_db().expect("init new in memory db");
+
+        // 3. Restore backup into new db
+        let restore_res = import_backup_data(&mut new_conn, &backup, false).expect("import backup");
+        assert_eq!(restore_res.tasks_restored, 1);
+        assert_eq!(restore_res.projects_restored, 1);
+        assert_eq!(restore_res.categories_restored, 1);
+        assert_eq!(restore_res.reminders_restored, 1);
+
+        // 4. Verify restored entities
+        let restored_task = get_task(&new_conn, &task.id).expect("get restored task");
+        assert_eq!(restored_task.title, "Task to backup");
+        assert_eq!(restored_task.project_id.as_deref(), Some(proj.id.as_str()));
+        assert_eq!(restored_task.category_id.as_deref(), Some(cat.id.as_str()));
+
+        let restored_reminders = list_reminders_for_task(&new_conn, &task.id).expect("list reminders");
+        assert_eq!(restored_reminders.len(), 1);
+        assert_eq!(restored_reminders[0].id, reminder.id);
+    }
+
+    #[test]
+    fn test_export_sqlite_snapshot() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Snapshot Task".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Medium),
+                due_at: None,
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+
+        let temp_dir = tempfile::tempdir().expect("create temp dir");
+        let snapshot_file = temp_dir.path().join("test_snapshot.db");
+
+        export_sqlite_snapshot(&conn, &snapshot_file).expect("export snapshot");
+        assert!(snapshot_file.exists());
+        assert!(std::fs::metadata(&snapshot_file).unwrap().len() > 0);
+
+        // Verify that the snapshot can be opened by rusqlite and queried
+        let snap_conn = Connection::open(&snapshot_file).expect("open snapshot");
+        let count: i64 = snap_conn
+            .query_row("SELECT COUNT(*) FROM tasks", [], |r| r.get(0))
+            .expect("query snapshot tasks");
+        assert_eq!(count, 1);
     }
 }

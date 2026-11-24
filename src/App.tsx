@@ -4,6 +4,7 @@ import { Header } from "./components/layout/Header";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TasksPage } from "./pages/TasksPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { TaskModal } from "./components/tasks/TaskModal";
 import { ProjectModal } from "./components/projects/ProjectModal";
 import { CategoryModal } from "./components/categories/CategoryModal";
@@ -303,6 +304,8 @@ export function App() {
         return "Today's Agenda";
       case "upcoming":
         return "Upcoming Tasks";
+      case "analytics":
+        return "Productivity Analytics";
       default:
         return "Daymark";
     }
@@ -317,6 +320,10 @@ export function App() {
           setActiveTab(tab);
           if (tab === "today" || tab === "upcoming") {
             setStatusFilter("pending");
+          }
+          if (tab === "analytics" || tab === "dashboard" || tab === "calendar") {
+            setSelectedProjectId(null);
+            setSelectedCategoryId(null);
           }
         }}
         isDark={isDark}
@@ -384,7 +391,9 @@ export function App() {
             </div>
           )}
 
-          {activeTab === "dashboard" && !selectedProjectId && !selectedCategoryId ? (
+          {activeTab === "analytics" && !selectedProjectId && !selectedCategoryId ? (
+            <AnalyticsPage />
+          ) : activeTab === "dashboard" && !selectedProjectId && !selectedCategoryId ? (
             <DashboardPage
               summary={summary}
               tasks={tasks}
@@ -496,6 +505,7 @@ export function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         isDark={isDark}
         onToggleTheme={() => setIsDark((prev) => !prev)}
+        onDataRestored={loadData}
       />
 
       {/* In-App Reminder Alert Banner */}

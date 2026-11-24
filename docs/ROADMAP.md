@@ -71,7 +71,7 @@ This roadmap outlines the planned development phases for Daymark.
 
 ---
 
-### [ ] Phase 6 — Analytics, Backup & Packaging
-- Analytics charts with Recharts (completion trends, project distribution).
-- Database backup export and restore procedures.
+### [x] Phase 6 — Analytics, Backup & Packaging
+- Analytics charts with Recharts (completion trends, project distribution, priority distribution, activity streaks).
+- Database backup export and restore procedures (portable JSON workspace backup and atomic SQLite snapshots via `VACUUM INTO`).
 - Debian `.deb` package build and installation verification.

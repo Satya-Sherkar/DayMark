@@ -14,6 +14,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -74,6 +75,11 @@ pub fn run() {
             commands::settings::set_autostart_enabled,
             commands::settings::get_setting,
             commands::settings::set_setting,
+            commands::analytics::get_productivity_overview,
+            commands::backup::export_backup_json,
+            commands::backup::import_backup_json,
+            commands::backup::export_database_snapshot,
+            commands::backup::list_backups,
         ])
         .run(tauri::generate_context!())
         .expect("error while running daymark desktop application");

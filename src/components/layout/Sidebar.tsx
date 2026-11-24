@@ -16,11 +16,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { Project } from "../../types/project";
 import { Category } from "../../types/category";
 
-export type NavTab = "dashboard" | "tasks" | "calendar" | "today" | "upcoming";
+export type NavTab = "dashboard" | "tasks" | "calendar" | "today" | "upcoming" | "analytics";
 
 interface SidebarProps {
   activeTab: NavTab;
@@ -71,6 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "calendar" as NavTab, label: "Calendar", icon: CalendarDays },
     { id: "today" as NavTab, label: "Today", icon: Calendar },
     { id: "upcoming" as NavTab, label: "Upcoming", icon: Clock },
+    { id: "analytics" as NavTab, label: "Analytics", icon: BarChart3 },
   ];
 
   const handleProjectClick = (projectId: string) => {

@@ -78,6 +78,23 @@
 |---|---|---|---|
 | `is_autostart_enabled` | None | `bool` | Queries system autolaunch status on Ubuntu/Linux |
 | `set_autostart_enabled` | `enabled: bool` | `()` | Configures system autolaunch and syncs with SQLite |
+| `get_setting` | `key: String` | `Option<String>` | Reads setting value from SQLite `settings` table |
+| `set_setting` | `key: String, value: String` | `()` | Upserts setting into SQLite `settings` table |
+
+### Analytics & Productivity Insights
+
+| Command | Arguments | Return Type | Description |
+|---|---|---|---|
+| `get_productivity_overview` | None | `ProductivityOverview` | Aggregates completion rates, current/best streaks, 30-day daily completions, project breakdown, and priority distribution |
+
+### Backup & Restore Management
+
+| Command | Arguments | Return Type | Description |
+|---|---|---|---|
+| `export_backup_json` | `targetPath?: Option<String>` | `String` | Exports full database (tasks, projects, categories, reminders, settings) to JSON |
+| `import_backup_json` | `sourcePath: String, merge: bool` | `RestoreResult` | Transactionally restores workspace data from JSON with replace or merge modes |
+| `export_database_snapshot` | `targetPath?: Option<String>` | `String` | Creates live defragmented SQLite database snapshot using `VACUUM INTO` |
+| `list_backups` | None | `Vec<BackupFileInfo>` | Scans local application backup directory and returns snapshot metadata |
 | `get_setting` | `key: String` | `Option<String>` | Retrieves persisted key-value setting |
 | `set_setting` | `key: String, value: String` | `()` | Upserts setting key-value pair |
 

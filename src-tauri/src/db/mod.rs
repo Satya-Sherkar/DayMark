@@ -4,6 +4,8 @@ use rusqlite::Connection;
 pub mod migrations;
 pub mod repository;
 
+pub use repository::*;
+
 pub fn init_db(db_path: &Path) -> Result<Connection, String> {
     if let Some(parent) = db_path.parent() {
         std::fs::create_dir_all(parent)

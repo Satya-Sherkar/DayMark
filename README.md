@@ -12,6 +12,8 @@ It operates completely locally on your machine with zero cloud dependencies, zer
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS v4 + Lucide Icons
 - **Backend:** Rust (`daymark_lib`), Tauri 2 IPC
 - **Storage:** Local SQLite with WAL mode, foreign keys, and migration runner
+- **Analytics & Visualizations:** Recharts (30-day trends, project breakdowns, priority distributions, streaks)
+- **Backup & Portability:** Transactional JSON backup export/restore and live atomic SQLite snapshots (`VACUUM INTO`)
 - **Identifiers & Timestamps:** UUID v4, RFC 3339 UTC timestamps
 
 ---

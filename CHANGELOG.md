@@ -59,6 +59,20 @@ All notable changes to Daymark are documented in this file.
     - Added frontend visibility listener in `App.tsx` pausing active reloads and rendering while the window is hidden to minimize background CPU and RAM usage.
   - Added `SettingsModal` in the frontend accessible from the sidebar to manage Linux autostart, view hotkeys, and inspect memory metrics.
   - Added unit test `test_settings_table_crud_and_conflict_upsert` (total 14 unit tests passing).
+- **Phase 6 Analytics, Backup & Packaging:**
+  - Implemented Rust analytics aggregation models (`ProductivityOverview`, `DailyCompletionStat`, `ProjectDistributionStat`, `PriorityDistributionStat`) and parameterized SQLite repository queries.
+  - Built `AnalyticsPage` with Recharts featuring Swiss Editorial + Obsidian Workshop styling:
+    - Key metrics bar: completion rate %, current & best activity streak (days), completions this week and month.
+    - 14-day / 30-day interactive Daily Completion Trend Area Chart with gradient fill and custom dark tooltip.
+    - Project Breakdown progress bars and Priority Distribution bar chart.
+  - Implemented dual-format database backup and restore system:
+    - Portable JSON workspace export and transactional import (`BackupData`, `RestoreResult`) supporting both clean replace and non-destructive merge modes.
+    - Live, zero-lock, defragmented SQLite snapshots utilizing `VACUUM INTO ?1`.
+    - Integrated native GNOME file save and open dialogs via `tauri-plugin-dialog`.
+    - Local snapshot archive manager listing backups from `~/.local/share/com.daymark.app/backups/` with one-click restore.
+  - Updated `SettingsModal` with tabbed navigation ("General & System" and "Backup & Data").
+  - Added unit test suite covering analytics aggregation, JSON backup/restore lifecycle, and SQLite snapshot integrity (17 unit tests passing).
+  - Verified Debian `.deb` package creation via `pnpm tauri build`.
 - **Visual Design System (Swiss Editorial + Obsidian Workshop):**
   - Integrated Manrope (headings), Inter (interface text), and IBM Plex Mono (timestamps, dates, metadata).
   - Established unified Light (`#F3F0E9`, `#EAE7DF`, `#FAF9F5`, `#252522`, `#77746D`, `#C64D38`, `#D9D4C9`) and Dark (`#20211F`, `#252623`, `#2B2C29`, `#F0EEE7`, `#A5A49B`, `#D17B54`, `#41413D`) theme tokens in Tailwind v4.

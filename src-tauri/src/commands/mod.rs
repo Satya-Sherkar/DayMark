@@ -1,3 +1,5 @@
+pub mod analytics;
+pub mod backup;
 pub mod categories;
 pub mod projects;
 pub mod reminders;

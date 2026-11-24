@@ -79,6 +79,25 @@ CREATE TABLE IF NOT EXISTS reminders (
     dismissed_at TEXT,
     created_at TEXT NOT NULL
 );
+```
+
+---
+
+## 4. Backup & Snapshot Procedures
+
+Daymark provides two non-destructive, fully local backup procedures:
+
+1. **Atomic SQLite Snapshot (`VACUUM INTO ?1`)**:
+   - Executes SQLite `VACUUM INTO` targeting a clean destination path (`.db`).
+   - Guarantees transactional consistency without locking write transactions or blocking readers.
+   - Defragments the database pages, creating a minimized, pristine database replica usable with any SQLite tooling.
+
+2. **JSON Workspace Export & Transactional Restore (`BackupData`)**:
+   - Serializes all relational entities (`tasks`, `projects`, `categories`, `reminders`, `settings`) into a formatted, human-readable JSON payload.
+   - Restores within a single SQLite transaction (`conn.transaction()`):
+     - **Replace Mode (`merge = false`):** Clears existing tables in foreign-key dependency order and repopulates all entities.
+     - **Merge Mode (`merge = true`):** Uses `INSERT OR REPLACE INTO` to upsert records into the existing workspace without wiping unrelated tasks.
+     - Automatically rolls back completely if any record fails validation or insertion.
 
 CREATE TABLE IF NOT EXISTS activity_logs (
     id TEXT PRIMARY KEY,

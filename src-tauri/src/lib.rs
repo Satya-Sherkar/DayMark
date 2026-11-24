@@ -12,6 +12,13 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|arg| arg == "--quick-add") {
+                shortcuts::trigger_quick_add(app);
+            } else {
+                shortcuts::show_and_focus_main_window(app);
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
@@ -50,6 +57,8 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
                 }
+            } else if std::env::args().any(|arg| arg == "--quick-add") {
+                shortcuts::trigger_quick_add(&app.handle().clone());
             }
 
             app.manage(app_state);

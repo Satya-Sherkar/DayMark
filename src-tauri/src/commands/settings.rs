@@ -7,7 +7,7 @@ pub fn sanitize_linux_autostart_desktop_file() {
     #[cfg(target_os = "linux")]
     {
         if let Ok(home) = std::env::var("HOME") {
-            let autostart_file = std::path::PathBuf::from(home)
+            let autostart_file = std::path::PathBuf::from(&home)
                 .join(".config")
                 .join("autostart")
                 .join("Daymark.desktop");

@@ -103,7 +103,22 @@
 | Event Name | Payload | Trigger |
 |---|---|---|
 | `reminder-delivered` | `DueReminder` | Emitted when background scheduler delivers a notification |
-| `open-quick-add` | `()` | Emitted when global hotkey (`Ctrl+Shift+Space`) or tray menu Quick Add is triggered |
+| `open-quick-add` | `()` | Emitted when global hotkey (`Ctrl+Shift+Space`), in-app shortcut (`Ctrl+N` / `Ctrl+Shift+Space`), or tray menu Quick Add is triggered |
+
+---
+
+## 3. Global Shortcuts & Single-Instance Architecture
+
+Daymark implements a multi-tier shortcut and window management model:
+
+1. **In-App Keyboard Shortcuts:**
+   - When focused inside Daymark, in-window keyboard listeners capture `Ctrl+Shift+Space` and `Ctrl+N` (New Task) to open the task creation dialog instantly.
+2. **Global Hotkeys:**
+   - On desktop environments supporting application-level global grabs, `tauri-plugin-global-shortcut` registers `Ctrl+Shift+Space` to restore, unminimize, focus, and open the Quick Add dialog.
+3. **Single-Instance Management (`tauri-plugin-single-instance`):**
+   - Detects when a secondary instance is launched, forwards CLI arguments (such as `--quick-add`), and safely focuses the primary running instance instead of creating duplicate processes or causing SQLite database lock contention.
+4. **System Tray Integration:**
+   - The system tray icon provides persistent access with Left-Click toggle (hide/show) and Right-Click menu actions ("Open Daymark", "Quick Add Task...", "Quit").
 
 ---
 

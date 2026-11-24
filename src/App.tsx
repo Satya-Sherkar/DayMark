@@ -145,7 +145,7 @@ export function App() {
     };
   }, [loadData]);
 
-  // Listen for global shortcut or tray "Quick Add" trigger
+  // Listen for global shortcut, tray "Quick Add", or CLI trigger
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     listen("open-quick-add", () => {
@@ -159,6 +159,46 @@ export function App() {
     return () => {
       if (unlisten) unlisten();
     };
+  }, []);
+
+  // In-app keyboard shortcuts for Quick Add and navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isModifier = e.ctrlKey || e.metaKey;
+
+      // 1. Ctrl+Shift+Space (or Cmd+Shift+Space) - Quick Add from anywhere inside Daymark
+      if (
+        isModifier &&
+        e.shiftKey &&
+        (e.code === "Space" || e.key === " " || e.key === "Spacebar")
+      ) {
+        e.preventDefault();
+        setEditingTask(null);
+        setModalDueAt(null);
+        setIsModalOpen(true);
+        return;
+      }
+
+      // 2. Ctrl+N (or Cmd+N) - New Task when not actively typing inside a text input / textarea
+      if (isModifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "n") {
+        const target = e.target as HTMLElement | null;
+        const isInput =
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "SELECT" ||
+            target.isContentEditable);
+        if (!isInput) {
+          e.preventDefault();
+          setEditingTask(null);
+          setModalDueAt(null);
+          setIsModalOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // Memory & CPU conservation: Refresh data only when window becomes visible again

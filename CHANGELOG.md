@@ -80,5 +80,11 @@ All notable changes to Daymark are documented in this file.
   - Implemented dynamic React Portal viewport positioning with real-time coordinate recalculation on window resize, scroll, and zoom (`Ctrl +` / `Ctrl -`), guaranteeing popovers never overflow screen boundaries or clip at any zoom level.
   - Redesigned collapsible sidebar, compact aligned header, flat task rows with custom checkboxes, and modal dialogs with 4px–8px radii.
   - Replaced generic metric cards with a unified editorial statistics grid.
+- **Keyboard Shortcuts & Single-Instance Architecture:**
+  - Integrated `tauri-plugin-single-instance` (v2) to safely prevent duplicate process spawning and focus the running instance.
+  - Implemented in-app keyboard listeners for `Ctrl+Shift+Space` and `Ctrl+N` (New Task) inside the React client.
+  - Unified window unhide, restore, and focus helpers across global shortcuts, single-instance forwarding, and the system tray.
+  - Removed host OS environment modifications (`gsettings` media keys) to guarantee zero interference with the user's desktop environment.
+  - Updated Settings modal keyboard shortcuts reference and documentation.
 - **Documentation:**
   - Created `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`, and `docs/ROADMAP.md`.

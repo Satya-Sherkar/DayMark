@@ -1,6 +1,7 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{App, Emitter, Manager};
+use tauri::{App, Manager};
+use crate::shortcuts;
 
 pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let open_i = MenuItem::with_id(app, "open", "Open Daymark", true, None::<&str>)?;
@@ -23,19 +24,10 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .on_menu_event(|app, event| {
             match event.id.as_ref() {
                 "open" => {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.unminimize();
-                        let _ = window.set_focus();
-                    }
+                    shortcuts::show_and_focus_main_window(app);
                 }
                 "quick_add" => {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.unminimize();
-                        let _ = window.set_focus();
-                        let _ = window.emit("open-quick-add", ());
-                    }
+                    shortcuts::trigger_quick_add(app);
                 }
                 "quit" => {
                     app.exit(0);
@@ -56,9 +48,7 @@ pub fn setup_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     if is_visible {
                         let _ = window.hide();
                     } else {
-                        let _ = window.show();
-                        let _ = window.unminimize();
-                        let _ = window.set_focus();
+                        shortcuts::show_and_focus_main_window(app);
                     }
                 }
             }

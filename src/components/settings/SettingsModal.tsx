@@ -319,27 +319,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* 2. Global Shortcuts */}
               <div className="space-y-2">
                 <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-dm-text-secondary">
-                  Global Shortcuts
+                  Keyboard Shortcuts
                 </label>
-                <div className="p-3 bg-dm-bg border border-dm-border rounded-[6px] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Command className="w-3.5 h-3.5 text-dm-accent" />
-                    <span className="text-xs font-sans text-dm-text-primary">
-                      Quick Add Task (Anywhere)
-                    </span>
+                <div className="p-3 bg-dm-bg border border-dm-border rounded-[6px] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Command className="w-3.5 h-3.5 text-dm-accent" />
+                      <div>
+                        <span className="text-xs font-sans text-dm-text-primary block">
+                          Quick Add Task (Global)
+                        </span>
+                        <span className="text-[10px] text-dm-text-secondary">
+                          Triggers from anywhere across your desktop
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 font-mono text-xs">
+                      <kbd className="px-1.5 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-text-primary text-[10px]">
+                        Ctrl
+                      </kbd>
+                      <span className="text-dm-text-secondary">+</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-text-primary text-[10px]">
+                        Shift
+                      </kbd>
+                      <span className="text-dm-text-secondary">+</span>
+                      <kbd className="px-2 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-accent font-semibold text-[10px]">
+                        Space
+                      </kbd>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 font-mono text-xs">
-                    <kbd className="px-1.5 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-text-primary text-[10px]">
-                      Ctrl
-                    </kbd>
-                    <span className="text-dm-text-secondary">+</span>
-                    <kbd className="px-1.5 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-text-primary text-[10px]">
-                      Shift
-                    </kbd>
-                    <span className="text-dm-text-secondary">+</span>
-                    <kbd className="px-2 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-accent font-semibold text-[10px]">
-                      Space
-                    </kbd>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-dm-border/60">
+                    <div className="flex items-center gap-2">
+                      <Command className="w-3.5 h-3.5 text-dm-text-secondary" />
+                      <span className="text-xs font-sans text-dm-text-primary">
+                        New Task (Inside Daymark)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 font-mono text-xs">
+                      <kbd className="px-1.5 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-text-primary text-[10px]">
+                        Ctrl
+                      </kbd>
+                      <span className="text-dm-text-secondary">+</span>
+                      <kbd className="px-2 py-0.5 rounded bg-dm-surface border border-dm-border text-dm-accent font-semibold text-[10px]">
+                        N
+                      </kbd>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-dm-text-secondary pt-1 font-sans leading-relaxed">
+                    Quickly capture tasks anytime using global hotkeys, in-app keyboard shortcuts, or the background system tray menu.
                   </div>
                 </div>
               </div>

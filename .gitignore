@@ -1,0 +1,189 @@
+# ==============================================================================
+# Daymark - Comprehensive .gitignore
+# Covers Node/React/Vite, Rust/Cargo, Tauri v2, SQLite, IDEs, and OS artifacts
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Dependencies & Package Managers
+# ------------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ------------------------------------------------------------------------------
+# Production Builds & Frontend Outputs
+# ------------------------------------------------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+
+# ------------------------------------------------------------------------------
+# Rust & Cargo Artifacts
+# ------------------------------------------------------------------------------
+target/
+**/target/
+**/*.rs.bk
+cargo-timing*.html
+.cargo/credentials
+.cargo/credentials.toml
+
+# ------------------------------------------------------------------------------
+# Tauri v2 Build & Generated Files
+# ------------------------------------------------------------------------------
+**/gen/schemas/
+gen/schemas/
+
+# Tauri Bundled Packages (installers generated during build/packaging)
+*.deb
+*.rpm
+*.AppImage
+*.appimage
+*.dmg
+*.msi
+*.exe
+
+# ------------------------------------------------------------------------------
+# Database & SQLite Files (Offline-first storage & local test DBs)
+# ------------------------------------------------------------------------------
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# ------------------------------------------------------------------------------
+# Environment Variables & Local Secrets
+# ------------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+# Allow committing example environment templates
+!.env.example
+!.env.template
+
+# ------------------------------------------------------------------------------
+# Testing, Coverage & Reports
+# ------------------------------------------------------------------------------
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+.playwright/
+cypress/videos/
+cypress/screenshots/
+report.html
+stats.html
+*.profraw
+*.profdata
+
+# ------------------------------------------------------------------------------
+# Cache & Temporary Build Artifacts
+# ------------------------------------------------------------------------------
+.cache/
+.vite/
+.turbo/
+.parcel-cache/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.prettiercache
+.biomecache
+
+# ------------------------------------------------------------------------------
+# Logs & Diagnostics
+# ------------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+rush-debug.log*
+
+# ------------------------------------------------------------------------------
+# IDEs & Code Editors
+# ------------------------------------------------------------------------------
+# Visual Studio Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains / IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+cmake-build-*/
+
+# Visual Studio & Windows Dev
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.user
+*.userosv
+*.useroptions
+
+# Vim, Emacs & Sublime Text
+*.sw?
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+*.sublime-workspace
+*.sublime-project
+.zed/
+
+# ------------------------------------------------------------------------------
+# Operating System Artifacts
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon\r\r
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.fuse_hidden*
+.nfs*
+
+# ------------------------------------------------------------------------------
+# Backup & Patch Files
+# ------------------------------------------------------------------------------
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+*.patch

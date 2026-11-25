@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
 
 permissions:
   contents: write
@@ -54,10 +59,20 @@ jobs:
       - name: Build Tauri Desktop Package (.deb & .AppImage)
         run: pnpm tauri build
 
+      - name: Determine Tag Name
+        id: vars
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.tag_name || 'v0.1.0' }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish Release Assets
         uses: softprops/action-gh-release@v2
         with:
-          name: Daymark ${{ github.ref_name }}
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Daymark ${{ steps.vars.outputs.tag }}
           draft: false
           prerelease: false
           generate_release_notes: true

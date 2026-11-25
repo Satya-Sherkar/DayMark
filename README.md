@@ -9,7 +9,7 @@ It operates completely locally on your machine with zero cloud dependencies, zer
 ## 📦 Quick Installation
 
 ### Option 1: Install Pre-Built `.deb` Package (Recommended)
-Download the latest Debian package from [Releases](https://github.com/Daymark/Daymark/releases) and install:
+Download the latest Debian package from [Releases](https://github.com/Satya-Sherkar/DayMark/releases/) and install:
 ```bash
 sudo apt install ./Daymark_0.1.0_amd64.deb
 ```

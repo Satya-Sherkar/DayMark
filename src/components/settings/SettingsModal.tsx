@@ -327,10 +327,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <Command className="w-3.5 h-3.5 text-dm-accent" />
                       <div>
                         <span className="text-xs font-sans text-dm-text-primary block">
-                          Quick Add Task (Global)
+                          Quick Add Overlay (Spotlight)
                         </span>
                         <span className="text-[10px] text-dm-text-secondary">
-                          Triggers from anywhere across your desktop
+                          Minimalist floating capture bar over any active screen
                         </span>
                       </div>
                     </div>

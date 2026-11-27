@@ -28,9 +28,17 @@ pub fn run() {
             Some(vec!["--autostart"]),
         ))
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                tauri::WindowEvent::Focused(focused) => {
+                    if !focused && window.label() == "quick-add" {
+                        let _ = window.hide();
+                    }
+                }
+                _ => {}
             }
         })
         .setup(|app| {
@@ -53,6 +61,11 @@ pub fn run() {
 
             commands::settings::sanitize_linux_autostart_desktop_file();
 
+            // Ensure secondary quick-add window is hidden on boot
+            if let Some(quick_window) = app.get_webview_window("quick-add") {
+                let _ = quick_window.hide();
+            }
+
             if std::env::args().any(|arg| arg == "--autostart") {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
@@ -73,6 +86,9 @@ pub fn run() {
             commands::tasks::reopen_task,
             commands::tasks::delete_task,
             commands::tasks::get_dashboard_summary,
+            commands::tasks::hide_quick_add,
+            commands::tasks::show_quick_add,
+            commands::tasks::sync_app_zoom,
             commands::projects::create_project,
             commands::projects::get_project,
             commands::projects::list_projects,

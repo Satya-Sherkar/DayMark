@@ -80,11 +80,12 @@ All notable changes to Daymark are documented in this file.
   - Implemented dynamic React Portal viewport positioning with real-time coordinate recalculation on window resize, scroll, and zoom (`Ctrl +` / `Ctrl -`), guaranteeing popovers never overflow screen boundaries or clip at any zoom level.
   - Redesigned collapsible sidebar, compact aligned header, flat task rows with custom checkboxes, and modal dialogs with 4px–8px radii.
   - Replaced generic metric cards with a unified editorial statistics grid.
-- **Keyboard Shortcuts & Single-Instance Architecture:**
-  - Integrated `tauri-plugin-single-instance` (v2) to safely prevent duplicate process spawning and focus the running instance.
-  - Implemented in-app keyboard listeners for `Ctrl+Shift+Space` and `Ctrl+N` (New Task) inside the React client.
-  - Unified window unhide, restore, and focus helpers across global shortcuts, single-instance forwarding, and the system tray.
-  - Removed host OS environment modifications (`gsettings` media keys) to guarantee zero interference with the user's desktop environment.
+- **Spotlight Quick Add Overlay & Window Architecture:**
+  - Designed and implemented a dedicated Claude Desktop-style floating Quick Add overlay window (`640x130`, frameless, always-on-top, upper-third screen placement).
+  - Built `QuickAddOverlay` with minimalist task input, 1-click cycle priority & due date chips, Enter-to-save, Escape-to-dismiss, and auto-dismiss on blur.
+  - Configured multi-window routing in `main.tsx` (`index.html#quick-add`) with automatic dark/light theme synchronization.
+  - Added backend window commands `hide_quick_add`, `show_quick_add`, and `sync_app_zoom`, plus cross-window zoom & `task-created-globally` synchronization so Spotlight Bar fonts and dimensions match the app zoom level.
+  - Integrated `tauri-plugin-single-instance` (v2) and unified window activation across global shortcuts, CLI triggers, and system tray.
   - Updated Settings modal keyboard shortcuts reference and documentation.
 - **Documentation:**
   - Created `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`, and `docs/ROADMAP.md`.

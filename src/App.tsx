@@ -20,6 +20,7 @@ import { DueReminder } from "./types/reminder";
 import { useZoom } from "./hooks/useZoom";
 import { ZoomIndicator } from "./components/ui/ZoomIndicator";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { Bell, X, CheckCircle2 } from "lucide-react";
 import "./App.css";
 
@@ -147,39 +148,52 @@ export function App() {
 
   // Listen for global shortcut, tray "Quick Add", or CLI trigger
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlistenQuickAdd: (() => void) | undefined;
+    let unlistenTaskCreated: (() => void) | undefined;
+
     listen("open-quick-add", () => {
       setEditingTask(null);
       setModalDueAt(null);
       setIsModalOpen(true);
     }).then((fn) => {
-      unlisten = fn;
+      unlistenQuickAdd = fn;
+    });
+
+    // Listen for tasks created from the floating Quick Add overlay
+    listen("task-created-globally", () => {
+      loadData();
+    }).then((fn) => {
+      unlistenTaskCreated = fn;
     });
 
     return () => {
-      if (unlisten) unlisten();
+      if (unlistenQuickAdd) unlistenQuickAdd();
+      if (unlistenTaskCreated) unlistenTaskCreated();
     };
-  }, []);
+  }, [loadData]);
 
   // In-app keyboard shortcuts for Quick Add and navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isModifier = e.ctrlKey || e.metaKey;
 
-      // 1. Ctrl+Shift+Space (or Cmd+Shift+Space) - Quick Add from anywhere inside Daymark
+      // 1. Ctrl+Shift+Space (or Cmd+Shift+Space) - Summon Claude-style Quick Add overlay
       if (
         isModifier &&
         e.shiftKey &&
         (e.code === "Space" || e.key === " " || e.key === "Spacebar")
       ) {
         e.preventDefault();
-        setEditingTask(null);
-        setModalDueAt(null);
-        setIsModalOpen(true);
+        invoke("show_quick_add").catch(() => {
+          // Fallback to in-app modal if show_quick_add fails
+          setEditingTask(null);
+          setModalDueAt(null);
+          setIsModalOpen(true);
+        });
         return;
       }
 
-      // 2. Ctrl+N (or Cmd+N) - New Task when not actively typing inside a text input / textarea
+      // 2. Ctrl+N (or Cmd+N) - Detailed New Task modal when not typing in text input
       if (isModifier && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "n") {
         const target = e.target as HTMLElement | null;
         const isInput =

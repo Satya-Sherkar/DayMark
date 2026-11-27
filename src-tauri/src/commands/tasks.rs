@@ -53,3 +53,36 @@ pub fn get_dashboard_summary(state: State<'_, AppState>) -> Result<DashboardSumm
     let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
     repository::get_dashboard_summary(&conn)
 }
+
+#[tauri::command]
+pub fn hide_quick_add(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = tauri::Manager::get_webview_window(&app, "quick-add") {
+        let _ = window.hide();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn show_quick_add(app: tauri::AppHandle) -> Result<(), String> {
+    crate::shortcuts::trigger_quick_add(&app);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn sync_app_zoom(
+    app: tauri::AppHandle,
+    zoom_level: f64,
+    source_label: Option<String>,
+) -> Result<f64, String> {
+    let normalized = crate::shortcuts::apply_zoom_to_quick_add(&app, zoom_level);
+
+    // Ensure the main window stays synchronized if zoom was adjusted from quick-add
+    if source_label.as_deref() == Some("quick-add") {
+        if let Some(main_window) = tauri::Manager::get_webview_window(&app, "main") {
+            let _ = main_window.set_zoom(normalized);
+        }
+    }
+
+    let _ = tauri::Emitter::emit(&app, "app-zoom-changed", normalized);
+    Ok(normalized)
+}

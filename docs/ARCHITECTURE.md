@@ -107,16 +107,18 @@
 
 ---
 
-## 3. Global Shortcuts & Single-Instance Architecture
+## 3. Global Shortcuts & Spotlight Quick-Add Architecture
 
 Daymark implements a multi-tier shortcut and window management model:
 
-1. **In-App Keyboard Shortcuts:**
-   - When focused inside Daymark, in-window keyboard listeners capture `Ctrl+Shift+Space` and `Ctrl+N` (New Task) to open the task creation dialog instantly.
-2. **Global Hotkeys:**
-   - On desktop environments supporting application-level global grabs, `tauri-plugin-global-shortcut` registers `Ctrl+Shift+Space` to restore, unminimize, focus, and open the Quick Add dialog.
+1. **Spotlight Floating Quick Add (`quick-add` window):**
+   - Configured as a lightweight, frameless, floating window (`640x130` base size, scaled dynamically with app zoom level) positioned in the upper-third of the active screen.
+   - Inspired by Claude Desktop's quick chat bar: provides an ultra-minimal task input with Enter-to-save, Escape-to-dismiss, auto-dismiss on blur, and synchronized webview zoom scaling (`sync_app_zoom`).
+   - When triggered via `Ctrl+Shift+Space`, CLI (`daymark --quick-add`), or tray "Quick Add Task...", it overlays immediately without bringing up the full main application window.
+2. **In-App Keyboard Shortcuts:**
+   - Inside the main application, `Ctrl+N` triggers the comprehensive `TaskModal` for in-depth scheduling, while `Ctrl+Shift+Space` summons the Spotlight overlay.
 3. **Single-Instance Management (`tauri-plugin-single-instance`):**
-   - Detects when a secondary instance is launched, forwards CLI arguments (such as `--quick-add`), and safely focuses the primary running instance instead of creating duplicate processes or causing SQLite database lock contention.
+   - Detects when a secondary instance is launched, forwards CLI arguments (such as `--quick-add`), and safely summons the overlay or focuses the primary running instance without duplicate processes or SQLite contention.
 4. **System Tray Integration:**
    - The system tray icon provides persistent access with Left-Click toggle (hide/show) and Right-Click menu actions ("Open Daymark", "Quick Add Task...", "Quit").
 

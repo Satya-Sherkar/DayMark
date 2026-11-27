@@ -224,6 +224,51 @@ pub fn list_tasks(conn: &Connection, filters: TaskFilters) -> Result<Vec<Task>, 
     Ok(tasks)
 }
 
+/// Fetches the highest-priority pending tasks for display in the system tray menu
+/// along with the total pending count.
+pub fn list_tray_pending_tasks(conn: &Connection, limit: usize) -> Result<(Vec<Task>, i64), String> {
+    let total_pending: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'in_progress')",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("Failed to count pending tray tasks: {}", e))?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, title, description, status, priority, due_at,
+                    project_id, category_id, recurrence_rule, recurrence_series_id,
+                    completed_at, created_at, updated_at
+             FROM tasks
+             WHERE status IN ('pending', 'in_progress')
+             ORDER BY
+                 CASE WHEN due_at IS NULL THEN 1 ELSE 0 END ASC,
+                 due_at ASC,
+                 CASE priority
+                     WHEN 'urgent' THEN 0
+                     WHEN 'high' THEN 1
+                     WHEN 'medium' THEN 2
+                     WHEN 'low' THEN 3
+                     ELSE 4
+                 END ASC,
+                 created_at DESC
+             LIMIT ?1",
+        )
+        .map_err(|e| format!("Failed to prepare tray tasks query: {}", e))?;
+
+    let rows = stmt
+        .query_map(params![limit as i64], row_to_task)
+        .map_err(|e| format!("Failed to query tray tasks: {}", e))?;
+
+    let mut tasks = Vec::new();
+    for r in rows {
+        tasks.push(r.map_err(|e| format!("Failed to read tray task row: {}", e))?);
+    }
+
+    Ok((tasks, total_pending))
+}
+
 pub fn update_task(conn: &Connection, id: &str, input: UpdateTaskInput) -> Result<Task, String> {
     // Check if task exists
     let existing = get_task(conn, id)?;
@@ -2146,5 +2191,75 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM tasks", [], |r| r.get(0))
             .expect("query snapshot tasks");
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_list_tray_pending_tasks_order_and_limit() {
+        let conn = init_in_memory_db().expect("init in memory db");
+
+        let t_no_due_low = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Low unscheduled".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Low),
+                due_at: None,
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+
+        let _t_no_due_urgent = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Urgent unscheduled".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Urgent),
+                due_at: None,
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+
+        let t_due_soon = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Due soon".to_string(),
+                description: None,
+                priority: Some(TaskPriority::Medium),
+                due_at: Some("2026-11-27T10:00:00Z".to_string()),
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+
+        let t_completed = create_task(
+            &conn,
+            CreateTaskInput {
+                title: "Already done".to_string(),
+                description: None,
+                priority: Some(TaskPriority::High),
+                due_at: Some("2026-11-26T10:00:00Z".to_string()),
+                project_id: None,
+                category_id: None,
+                recurrence_rule: None,
+            },
+        )
+        .unwrap();
+        complete_task(&conn, &t_completed.id).unwrap();
+
+        let (tasks, total) = list_tray_pending_tasks(&conn, 2).expect("tray tasks");
+        assert_eq!(total, 3);
+        assert_eq!(tasks.len(), 2);
+        // Due task comes before unscheduled, urgent comes before low among unscheduled
+        assert_eq!(tasks[0].id, t_due_soon.id);
+        assert_eq!(tasks[1].title, "Urgent unscheduled");
+        assert_ne!(tasks[1].id, t_no_due_low.id);
     }
 }

@@ -104,6 +104,8 @@
 |---|---|---|
 | `reminder-delivered` | `DueReminder` | Emitted when background scheduler delivers a notification |
 | `open-quick-add` | `()` | Emitted when global hotkey (`Ctrl+Shift+Space`), in-app shortcut (`Ctrl+N` / `Ctrl+Shift+Space`), or tray menu Quick Add is triggered |
+| `tasks-changed` | `()` | Emitted when tasks are completed or reopened from the system tray so active UI views stay synchronized |
+| `navigate-to-tasks` | `()` | Emitted when clicking `View all N tasks...` in the system tray menu |
 
 ---
 
@@ -120,7 +122,10 @@ Daymark implements a multi-tier shortcut and window management model:
 3. **Single-Instance Management (`tauri-plugin-single-instance`):**
    - Detects when a secondary instance is launched, forwards CLI arguments (such as `--quick-add`), and safely summons the overlay or focuses the primary running instance without duplicate processes or SQLite contention.
 4. **System Tray Integration:**
-   - The system tray icon provides persistent access with Left-Click toggle (hide/show) and Right-Click menu actions ("Open Daymark", "Quick Add Task...", "Quit").
+   - The system tray icon provides persistent access with Left-Click toggle (hide/show) and a live context menu featuring:
+     - Quick navigation (`Open Daymark`, `Quick Add Task...`, `Quit Daymark`).
+     - A live **Pending Tasks** section listing up to 8 active tasks as clickable `CheckMenuItem` tickboxes (`task_toggle:<id>`) ordered by due urgency and priority, with automatic sync across SQLite, recurring task generation, and the main window (`tasks-changed`).
+     - A `View all N tasks...` shortcut item when more than 8 pending tasks exist.
 
 ---
 

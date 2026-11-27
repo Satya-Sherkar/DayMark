@@ -6,10 +6,32 @@ use crate::{
     state::AppState,
 };
 
+fn mutate_and_refresh_tray<T, F>(
+    app: &tauri::AppHandle,
+    state: &State<'_, AppState>,
+    op: F,
+) -> Result<T, String>
+where
+    F: FnOnce(&rusqlite::Connection) -> Result<T, String>,
+{
+    let result = {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Database lock poisoned: {}", e))?;
+        op(&conn)?
+    };
+    crate::tray::refresh_tray_menu(app);
+    Ok(result)
+}
+
 #[tauri::command]
-pub fn create_task(state: State<'_, AppState>, input: CreateTaskInput) -> Result<Task, String> {
-    let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
-    repository::create_task(&conn, input)
+pub fn create_task(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    input: CreateTaskInput,
+) -> Result<Task, String> {
+    mutate_and_refresh_tray(&app, &state, |conn| repository::create_task(conn, input))
 }
 
 #[tauri::command]
@@ -25,27 +47,40 @@ pub fn list_tasks(state: State<'_, AppState>, filters: Option<TaskFilters>) -> R
 }
 
 #[tauri::command]
-pub fn update_task(state: State<'_, AppState>, id: String, input: UpdateTaskInput) -> Result<Task, String> {
-    let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
-    repository::update_task(&conn, &id, input)
+pub fn update_task(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    input: UpdateTaskInput,
+) -> Result<Task, String> {
+    mutate_and_refresh_tray(&app, &state, |conn| repository::update_task(conn, &id, input))
 }
 
 #[tauri::command]
-pub fn complete_task(state: State<'_, AppState>, id: String) -> Result<Task, String> {
-    let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
-    repository::complete_task(&conn, &id)
+pub fn complete_task(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Task, String> {
+    mutate_and_refresh_tray(&app, &state, |conn| repository::complete_task(conn, &id))
 }
 
 #[tauri::command]
-pub fn reopen_task(state: State<'_, AppState>, id: String) -> Result<Task, String> {
-    let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
-    repository::reopen_task(&conn, &id)
+pub fn reopen_task(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Task, String> {
+    mutate_and_refresh_tray(&app, &state, |conn| repository::reopen_task(conn, &id))
 }
 
 #[tauri::command]
-pub fn delete_task(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| format!("Database lock poisoned: {}", e))?;
-    repository::delete_task(&conn, &id)
+pub fn delete_task(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    mutate_and_refresh_tray(&app, &state, |conn| repository::delete_task(conn, &id))
 }
 
 #[tauri::command]

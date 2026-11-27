@@ -53,6 +53,7 @@ pub fn run() {
 
             let app_state = AppState::new(conn);
             let db_clone = app_state.db.clone();
+            app.manage(app_state);
 
             scheduler::start_reminder_scheduler(app.handle().clone(), db_clone);
 
@@ -74,7 +75,6 @@ pub fn run() {
                 shortcuts::trigger_quick_add(&app.handle().clone());
             }
 
-            app.manage(app_state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

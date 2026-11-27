@@ -59,6 +59,7 @@ pub fn export_backup_json(
 
 #[tauri::command]
 pub fn import_backup_json(
+    app: AppHandle,
     state: State<AppState>,
     source_path: String,
     merge: bool,
@@ -74,12 +75,17 @@ pub fn import_backup_json(
     let backup_data = serde_json::from_str(&content)
         .map_err(|e| format!("Invalid backup file format: {}", e))?;
 
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+    let result = {
+        let mut conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Database lock error: {}", e))?;
 
-    db::import_backup_data(&mut conn, &backup_data, merge)
+        db::import_backup_data(&mut conn, &backup_data, merge)?
+    };
+
+    crate::tray::refresh_tray_menu(&app);
+    Ok(result)
 }
 
 #[tauri::command]

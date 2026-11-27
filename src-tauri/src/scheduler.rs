@@ -6,6 +6,7 @@ use rusqlite::Connection;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
 use crate::db::repository;
+use crate::tray;
 
 pub fn start_reminder_scheduler(app_handle: AppHandle, db: Arc<Mutex<Connection>>) {
     thread::spawn(move || {
@@ -19,6 +20,11 @@ pub fn start_reminder_scheduler(app_handle: AppHandle, db: Arc<Mutex<Connection>
                 if let Ok(conn) = db.lock() {
                     let _ = conn.execute_batch("PRAGMA wal_checkpoint(PASSIVE);");
                 }
+            }
+
+            // Refresh tray due/overdue date badges periodically (~every 15 minutes)
+            if tick_counter % 60 == 0 {
+                tray::refresh_tray_menu(&app_handle);
             }
 
             // 1. Fetch due undelivered reminders (includes missed reminders from downtime)

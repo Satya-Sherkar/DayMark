@@ -86,6 +86,7 @@ All notable changes to Daymark are documented in this file.
   - Configured multi-window routing in `main.tsx` (`index.html#quick-add`) with automatic dark/light theme synchronization.
   - Added backend window commands `hide_quick_add`, `show_quick_add`, and `sync_app_zoom`, plus cross-window zoom & `task-created-globally` synchronization so Spotlight Bar fonts and dimensions match the app zoom level.
   - Integrated `tauri-plugin-single-instance` (v2) and unified window activation across global shortcuts, CLI triggers, and system tray.
+  - Enhanced the system tray menu (`src-tauri/src/tray.rs`) with a live Pending Tasks section displaying interactive `CheckMenuItem` tickboxes to mark tasks complete directly from the tray, synchronized in real time with SQLite mutations and the main app UI (`tasks-changed`).
   - Updated Settings modal keyboard shortcuts reference and documentation.
 - **Documentation:**
   - Created `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`, and `docs/ROADMAP.md`.

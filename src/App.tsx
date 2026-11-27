@@ -146,10 +146,12 @@ export function App() {
     };
   }, [loadData]);
 
-  // Listen for global shortcut, tray "Quick Add", or CLI trigger
+  // Listen for global shortcut, tray actions, or CLI triggers
   useEffect(() => {
     let unlistenQuickAdd: (() => void) | undefined;
     let unlistenTaskCreated: (() => void) | undefined;
+    let unlistenTasksChanged: (() => void) | undefined;
+    let unlistenNavigateTasks: (() => void) | undefined;
 
     listen("open-quick-add", () => {
       setEditingTask(null);
@@ -159,16 +161,30 @@ export function App() {
       unlistenQuickAdd = fn;
     });
 
-    // Listen for tasks created from the floating Quick Add overlay
+    // Listen for tasks created or completed outside the main window (Spotlight overlay / System Tray)
     listen("task-created-globally", () => {
       loadData();
     }).then((fn) => {
       unlistenTaskCreated = fn;
     });
 
+    listen("tasks-changed", () => {
+      loadData();
+    }).then((fn) => {
+      unlistenTasksChanged = fn;
+    });
+
+    listen("navigate-to-tasks", () => {
+      setActiveTab("tasks");
+    }).then((fn) => {
+      unlistenNavigateTasks = fn;
+    });
+
     return () => {
       if (unlistenQuickAdd) unlistenQuickAdd();
       if (unlistenTaskCreated) unlistenTaskCreated();
+      if (unlistenTasksChanged) unlistenTasksChanged();
+      if (unlistenNavigateTasks) unlistenNavigateTasks();
     };
   }, [loadData]);
 
